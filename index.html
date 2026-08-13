@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rekod Bil TNB & Air — SWIS Resources Group</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --bg:#12151b; --panel:#191d25; --panel-2:#1f2430; --border:#2a303c;
+  --text:#e9ecf2; --muted:#8a91a3; --muted-2:#5f6576;
+  --elec:#f0a93b; --elec-dim:#6b5426; --water:#3fb6d3; --water-dim:#24505a;
+  --up:#e5605a; --down:#4cc38a; --flat:#8a91a3;
+  --radius:10px; --mono:'IBM Plex Mono',monospace; --sans:'Inter',sans-serif;
+}
+*{ box-sizing:border-box; }
+html,body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); }
+#app{ min-height:100vh; }
+::-webkit-scrollbar{ width:8px; height:8px; }
+::-webkit-scrollbar-thumb{ background:#2f3644; border-radius:4px; }
+
+.topbar{
+  display:flex; align-items:center; justify-content:space-between; padding:14px 22px;
+  border-bottom:1px solid var(--border); background:linear-gradient(180deg,#161a22,#12151b);
+  flex-wrap:wrap; gap:10px;
+}
+.brand{ display:flex; align-items:center; gap:12px; }
+.brand-mark{ font-family:var(--mono); font-weight:700; font-size:13px; color:#0d0f13;
+  background:linear-gradient(135deg,var(--elec),#d98b1f); padding:8px 10px; border-radius:6px; }
+.brand-text h1{ margin:0; font-size:17px; font-weight:800; }
+.brand-text p{ margin:2px 0 0; font-size:12px; color:var(--muted); font-family:var(--mono); }
+.brand-text p.shared-note{ color:var(--water); font-family:var(--sans); font-size:11.5px; margin-top:4px; }
+.topbar-actions{ display:flex; gap:8px; }
+
+.btn{ font-family:var(--sans); font-size:12.5px; font-weight:600; border-radius:7px; padding:9px 16px;
+  cursor:pointer; border:1px solid var(--border); transition:filter .15s; }
+.btn:hover{ filter:brightness(1.15); }
+.btn.primary{ background:linear-gradient(135deg,var(--elec),#d98b1f); color:#14171b; border:none; }
+.btn.ghost{ background:var(--panel); color:var(--text); }
+.btn.small{ padding:5px 10px; font-size:11px; }
+.btn.danger{ background:#3a2020; color:var(--up); border-color:#5a2a2a; }
+
+.layout{ display:grid; grid-template-columns: 380px 1fr; gap:0; align-items:start; }
+@media(max-width:980px){ .layout{ grid-template-columns:1fr; } }
+
+.form-panel{ padding:20px; border-right:1px solid var(--border); position:sticky; top:0; }
+@media(max-width:980px){ .form-panel{ position:static; border-right:none; border-bottom:1px solid var(--border); } }
+.table-panel{ padding:20px; min-width:0; }
+
+.panel-title{ font-size:14px; font-weight:700; margin:0 0 14px; }
+
+.field{ margin-bottom:12px; display:flex; flex-direction:column; gap:5px; }
+.field label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px; font-weight:600; }
+.field input, .field select{
+  background:var(--panel); border:1px solid var(--border); color:var(--text);
+  border-radius:7px; padding:9px 10px; font-size:13px; font-family:var(--sans); outline:none; width:100%;
+}
+.field input:focus, .field select:focus{ border-color:var(--elec); }
+.field-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+.new-prop-box{ background:#1c2130; border:1px dashed #3a4258; border-radius:8px; padding:12px; margin-bottom:14px; }
+.new-prop-note{ font-size:11.5px; color:var(--elec); margin-bottom:10px; font-weight:600; }
+.existing-prop-box{ background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:12px; line-height:1.7; }
+.existing-prop-box .row{ display:flex; justify-content:space-between; gap:10px; }
+.existing-prop-box .k{ color:var(--muted); }
+.existing-prop-box .v{ font-family:var(--mono); color:var(--text); text-align:right; }
+
+.toggle-group{ display:flex; gap:6px; }
+.toggle-opt{
+  flex:1; background:var(--panel); border:1px solid var(--border); color:var(--muted);
+  padding:9px 6px; border-radius:7px; font-size:12.5px; cursor:pointer; font-weight:600; font-family:var(--sans);
+}
+.toggle-opt.active[data-val="elec"]{ background:var(--elec-dim); color:var(--elec); border-color:var(--elec); }
+.toggle-opt.active[data-val="water"]{ background:var(--water-dim); color:var(--water); border-color:var(--water); }
+
+.compare-box{
+  background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px;
+  font-size:12px; font-family:var(--mono); margin-bottom:12px; color:var(--muted); line-height:1.6;
+}
+.compare-box b{ color:var(--text); }
+.compare-box .up{ color:var(--up); } .compare-box .down{ color:var(--down); }
+
+.form-actions{ display:flex; align-items:center; gap:10px; margin-top:6px; }
+.save-msg{ font-size:12px; color:var(--down); font-family:var(--mono); }
+
+.table-head{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
+.table-filters{ display:flex; gap:8px; flex-wrap:wrap; }
+
+.view-tabs{ display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid var(--border); }
+.view-tab{
+  background:none; border:none; color:var(--muted); font-family:var(--sans); font-size:13px; font-weight:600;
+  padding:9px 4px; margin-right:18px; cursor:pointer; border-bottom:2px solid transparent;
+}
+.view-tab:hover{ color:var(--text); }
+.view-tab.active{ color:var(--elec); border-bottom-color:var(--elec); }
+
+.dash-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:22px; }
+.dash-card{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:15px; }
+.dash-card .lbl{ font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+.dash-card .val{ font-family:var(--mono); font-size:21px; font-weight:600; margin-top:5px; }
+.dash-card .val small{ font-size:12px; color:var(--muted-2); font-weight:400; }
+.dash-card .delta{ font-size:11.5px; margin-top:5px; font-family:var(--mono); }
+
+.dash-panel{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:18px; }
+.dash-panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+.dash-panel-head h3{ margin:0; font-size:13.5px; font-weight:700; }
+.dash-legend{ display:flex; gap:12px; font-size:11px; color:var(--muted); }
+.dash-legend span{ display:inline-flex; align-items:center; gap:5px; }
+.legend-dot{ width:9px; height:9px; border-radius:2px; display:inline-block; }
+.dash-chart-wrap{ position:relative; height:260px; }
+.dash-two-col{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:900px){ .dash-two-col{ grid-template-columns:1fr; } }
+
+.rank-row{ display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid #1f2430; }
+.rank-row .rn{ font-family:var(--mono); color:var(--muted-2); font-size:11px; width:16px; }
+.rank-row .rname{ flex:1; font-size:12px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; flex-direction:column; }
+.rank-row .rcompany{ font-size:10px; color:var(--muted-2); font-family:var(--sans); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rank-row .rbar-wrap{ flex:1.2; background:#1f2430; border-radius:4px; overflow:hidden; height:7px; }
+.rank-row .rbar{ height:100%; border-radius:4px; }
+.rank-row .rval{ font-family:var(--mono); font-size:11px; width:82px; text-align:right; color:var(--muted); }
+.dash-year-select{ background:var(--panel-2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 8px; font-size:12px; font-family:var(--sans); }
+.table-filters input, .table-filters select{
+  background:var(--panel); border:1px solid var(--border); color:var(--text);
+  border-radius:7px; padding:7px 10px; font-size:12.5px; font-family:var(--sans); outline:none;
+}
+.table-scroll{ overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); }
+table.data-table{ width:100%; border-collapse:collapse; font-size:12px; min-width:900px; }
+table.data-table th{
+  text-align:right; font-weight:600; color:var(--muted); font-size:10px; text-transform:uppercase;
+  letter-spacing:0.3px; padding:9px 10px; border-bottom:1px solid var(--border); white-space:nowrap;
+  background:var(--panel-2); position:sticky; top:0;
+}
+table.data-table th:first-child, table.data-table td:first-child{ text-align:left; }
+table.data-table td{ text-align:right; padding:8px 10px; border-bottom:1px solid #1f2430; font-family:var(--mono); white-space:nowrap; }
+table.data-table tr:hover td{ background:#1c212b; }
+.remark-cell{ font-family:var(--sans); text-align:left !important; color:var(--muted); font-style:italic; max-width:180px; overflow:hidden; text-overflow:ellipsis; }
+.addr-cell{ max-width:220px; overflow:hidden; text-overflow:ellipsis; font-family:var(--sans); }
+.company-cell{ max-width:170px; overflow:hidden; text-overflow:ellipsis; font-family:var(--sans); text-align:left !important; color:var(--muted); }
+.usage-cell{ max-width:150px; overflow:hidden; text-overflow:ellipsis; font-family:var(--sans); text-align:left !important; color:var(--muted); }
+.type-pill{ font-family:var(--sans); font-size:10.5px; padding:2px 7px; border-radius:5px; font-weight:600; }
+.type-pill.elec{ background:var(--elec-dim); color:var(--elec); }
+.type-pill.water{ background:var(--water-dim); color:var(--water); }
+.pos{ color:var(--up); } .neg{ color:var(--down); } .neu{ color:var(--muted); }
+.row-actions{ display:flex; gap:5px; justify-content:flex-end; }
+.icon-btn{ background:none; border:none; color:var(--muted); cursor:pointer; font-size:13px; padding:2px 5px; }
+.icon-btn:hover{ color:var(--text); }
+.empty-note{ color:var(--muted); font-size:12.5px; padding:24px; text-align:center; }
+
+.modal-backdrop{ position:fixed; inset:0; background:rgba(8,10,14,0.72); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px; }
+.modal-box{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); width:100%; max-width:520px; max-height:82vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+.modal-head{ padding:16px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-head h3{ margin:0; font-size:14.5px; font-weight:700; }
+.modal-body{ padding:16px 18px; overflow-y:auto; font-size:12.5px; line-height:1.7; }
+.modal-foot{ padding:12px 18px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+.import-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+.import-stat{ background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center; }
+.import-stat .n{ font-family:var(--mono); font-size:19px; font-weight:700; }
+.import-stat .l{ font-size:10px; color:var(--muted); text-transform:uppercase; margin-top:3px; }
+.import-errors{ background:var(--panel-2); border:1px solid #5a2a2a; border-radius:8px; padding:10px 12px; color:var(--up); font-family:var(--mono); font-size:11.5px; max-height:220px; overflow-y:auto; }
+.import-errors div{ margin-bottom:4px; }
+.close-x{ background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:2px 6px; }
+.close-x:hover{ color:var(--text); }
+
+.prop-suggest-wrap{ position:relative; }
+.prop-suggest{ position:absolute; top:100%; left:0; right:0; background:var(--panel); border:1px solid var(--border);
+  border-radius:8px; margin-top:4px; max-height:280px; overflow-y:auto; z-index:50; box-shadow:0 10px 30px rgba(0,0,0,0.45); }
+.prop-suggest-item{ padding:8px 10px; cursor:pointer; border-bottom:1px solid #1f2430; }
+.prop-suggest-item:last-child{ border-bottom:none; }
+.prop-suggest-item:hover{ background:#1c212b; }
+.prop-suggest-addr{ font-size:12.5px; color:var(--text); font-family:var(--sans); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.prop-suggest-meta{ font-size:10.5px; color:var(--muted); font-family:var(--mono); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.prop-suggest-meta b{ color:var(--elec); font-weight:600; }
+.prop-suggest-empty{ padding:10px; font-size:12px; color:var(--muted); text-align:center; }
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">SWIS</div>
+      <div class="brand-text">
+        <h1 data-i18n="brand_title">Rekod Bil TNB &amp; Air</h1>
+        <p id="statusLine" data-i18n="status_loading">Memuatkan...</p>
+        <p class="shared-note" data-i18n="shared_note">🔗 Storan dikongsi — semua pengguna app ini nampak &amp; boleh kemaskini rekod yang sama</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn ghost" id="langBtn">🌐 EN</button>
+      <button class="btn ghost" id="templateBtn" data-i18n="btn_template">📄 Templat Excel</button>
+      <button class="btn ghost" id="importBtn" data-i18n="btn_import">⭱ Import Excel</button>
+      <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;" />
+      <button class="btn ghost" id="exportExcelBtn" data-i18n="btn_export_excel">⭳ Eksport Excel</button>
+      <button class="btn ghost" id="exportBtn" data-i18n="btn_export">⭳ Eksport JSON</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="form-panel">
+      <h2 class="panel-title" data-i18n="form_title">➕ Tambah / Kemaskini Rekod</h2>
+      <form id="recordForm">
+        <div class="field">
+          <label data-i18n="label_location">Lokasi (Property)</label>
+          <div class="prop-suggest-wrap">
+            <input id="propInput" data-i18n-ph="ph_location" placeholder="Cari lokasi, No. Akaun TNB / Air, atau taip alamat baru..." autocomplete="off" required />
+            <div class="prop-suggest" id="propSuggest" style="display:none;"></div>
+          </div>
+        </div>
+
+        <div id="existingPropInfo" class="existing-prop-box" style="display:none;"></div>
+
+        <div id="newPropFields" class="new-prop-box" style="display:none;">
+          <div class="new-prop-note" data-i18n="new_prop_note">Property baru — sila lengkapkan maklumat berikut:</div>
+          <div class="field-grid">
+            <div class="field"><label data-i18n="label_company">Syarikat</label><input id="npCompany" type="text" /></div>
+            <div class="field"><label data-i18n="label_branch">Cawangan</label><input id="npBranch" type="text" /></div>
+            <div class="field"><label data-i18n="label_usage">Kegunaan</label><input id="npUsage" type="text" /></div>
+            <div class="field"><label data-i18n="label_tnb_acc">No. Akaun TNB</label><input id="npTnbAcc" type="text" /></div>
+            <div class="field"><label data-i18n="label_tariff">Tarif TNB</label><input id="npTariff" type="text" data-i18n-ph="ph_tariff" placeholder="cth: B : Perdagangan" /></div>
+            <div class="field"><label data-i18n="label_water_acc">No. Akaun Air</label><input id="npWaterAcc" type="text" /></div>
+            <div class="field"><label data-i18n="label_provider">Pembekal Air</label><input id="npProvider" type="text" data-i18n-ph="ph_provider" placeholder="cth: SYABAS" /></div>
+            <div class="field"><label data-i18n="label_billing_period">Tempoh Bil</label><input id="npBillingPeriod" type="text" data-i18n-ph="ph_billing_period" placeholder="cth: 1st - 31st" /></div>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label data-i18n="label_utility_type">Jenis Utiliti</label>
+            <div class="toggle-group" id="typeToggle">
+              <button type="button" class="toggle-opt active" data-val="elec" data-i18n="opt_elec">⚡ Elektrik</button>
+              <button type="button" class="toggle-opt" data-val="water" data-i18n="opt_water">💧 Air</button>
+            </div>
+          </div>
+          <div class="field">
+            <label data-i18n="label_year">Tahun</label>
+            <input type="number" id="yearInput" value="2026" min="2020" max="2035" required />
+          </div>
+          <div class="field">
+            <label data-i18n="label_month">Bulan</label>
+            <select id="monthInput" required></select>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label id="readingLabel" data-i18n="label_reading_kwh">Bacaan (kWh)</label>
+            <input type="number" step="any" id="readingInput" data-i18n-ph="ph_reading" placeholder="cth: 1234" />
+          </div>
+          <div class="field">
+            <label data-i18n="label_cost">Kos (RM)</label>
+            <input type="number" step="any" id="costInput" data-i18n-ph="ph_cost" placeholder="cth: 456.78" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label data-i18n="label_remarks">Catatan (pilihan)</label>
+          <input type="text" id="remarksInput" data-i18n-ph="ph_remarks" placeholder="cth: bacaan anggaran, meter rosak, dll" />
+        </div>
+
+        <div class="compare-box" id="compareBox" style="display:none;"></div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="saveBtn" data-i18n="btn_save">Simpan Rekod</button>
+          <button type="button" class="btn ghost" id="resetBtn" data-i18n="btn_reset">Reset</button>
+          <span class="save-msg" id="saveMsg"></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="table-panel">
+      <div class="view-tabs">
+        <button class="view-tab active" data-view="records" data-i18n="tab_records">📋 Rekod</button>
+        <button class="view-tab" data-view="dashboard" data-i18n="tab_dashboard">📊 Dashboard</button>
+      </div>
+
+      <div id="recordsView">
+        <div class="table-head">
+          <h2 class="panel-title" data-i18n="records_title">📋 Rekod Tersimpan</h2>
+          <div class="table-filters">
+            <input id="filterSearch" type="text" data-i18n-ph="ph_search_location" placeholder="Cari lokasi..." />
+            <select id="filterType">
+              <option value="ALL" data-i18n="opt_all_types">Semua Jenis</option>
+              <option value="elec" data-i18n="opt_elec">⚡ Elektrik</option>
+              <option value="water" data-i18n="opt_water">💧 Air</option>
+            </select>
+            <select id="filterYear"></select>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="recordsTable">
+            <thead><tr>
+              <th data-i18n="th_location">Lokasi</th><th data-i18n="th_type">Jenis</th><th data-i18n="th_company">Syarikat</th><th data-i18n="th_branch">Cawangan</th><th data-i18n="th_usage">Kegunaan</th><th data-i18n="th_account">No. Akaun</th><th data-i18n="th_month">Bulan</th><th data-i18n="th_year">Tahun</th>
+              <th data-i18n="th_reading">Bacaan</th><th data-i18n="th_reading_ly">Bacaan Thn Lepas</th><th data-i18n="th_cost">Kos (RM)</th><th data-i18n="th_cost_ly">Kos Thn Lepas</th><th data-i18n="th_pct_cost">% Kos</th>
+              <th data-i18n="th_remarks">Catatan</th><th></th>
+            </tr></thead>
+            <tbody id="recordsBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-note" id="emptyNote" style="display:none;" data-i18n="empty_note_search">Tiada rekod sepadan carian.</div>
+      </div>
+
+      <div id="dashboardView" style="display:none;"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STORAGE BRIDGE — guna window.storage (Claude) bila ada; kalau
+// tak (app dibuka standalone di luar Claude), sambung ke Google
+// Sheets melalui Google Apps Script Web App sebagai storan
+// DIKONGSI antara semua pengguna. Isi SHEETS_API_URL selepas deploy
+// skrip Google Apps Script (rujuk fail google-apps-script-backend.js
+// dan panduan setup yang disertakan).
+// ============================================================
+const SHEETS_API_URL = ''; // <-- https://script.google.com/macros/s/AKfycbyPYITbnWBKrBmHIBrnAq40SsFFT-GC_WrkVqz2xnlSU5CFs8A8ocosl6okQkjNFH6lJQ/exec
+if (!window.storage) {
+  window.storage = {
+    async get(key, shared){
+      if (shared && SHEETS_API_URL) {
+        const res = await fetch(`${SHEETS_API_URL}?key=${encodeURIComponent(key)}`);
+        const data = await res.json();
+        if (!data || data.value === undefined || data.value === null) throw new Error('not found');
+        return { key, value: data.value, shared };
+      }
+      const v = localStorage.getItem('rekod_' + key);
+      if (v === null) throw new Error('not found');
+      return { key, value: v, shared };
+    },
+    async set(key, value, shared){
+      if (shared && SHEETS_API_URL) {
+        await fetch(SHEETS_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // elak CORS preflight
+          body: JSON.stringify({ key, value })
+        });
+        return { key, value, shared };
+      }
+      localStorage.setItem('rekod_' + key, value);
+      return { key, value, shared };
+    },
+    async delete(key, shared){
+      localStorage.removeItem('rekod_' + key);
+      return { key, deleted: true, shared };
+    },
+    async list(prefix, shared){
+      return { keys: [], prefix, shared };
+    }
+  };
+}
+
+const SEED_DATA = {"properties": [{"id": 0, "address": "10-01, Lot103, Jalan Kota 2/1, Taman Cahaya Kota Puteri, 81750 Masai, Johor", "company": "Southern Engineering Utilities Sdn. Bhd.", "branch": "HDD", "usage": "SEU Office", "tariff": "B : Perdagangan", "provider": "SAJ", "billingPeriod": "20th - 19th", "tnbAccount": "210441537900", "waterAccount": "95060060-R6486331"}, {"id": 1, "address": "Lot 1355, Jln Tg. Shawal Bt. 2, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Khidmat Rentang Sdn Bhd", "branch": "HDD", "usage": "HDD Store", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "4th - 3rd", "tnbAccount": "220023585206", "waterAccount": "3941587568.0"}, {"id": 2, "address": "Lot 3097, Jalan Keretapi Lama, Sg. Pinang, 41400 Klang, Selangor", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "HDD", "usage": "Rumah Manday HDD & Lampu Jalan", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "4th - 3rd", "tnbAccount": "220075889002", "waterAccount": "0928472140"}, {"id": 3, "address": "Lot 3097-J, Jalan Keretapi Lama, Sg. Pinang, 41400 Klang, Selangor", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "HDD", "usage": "Asrama OHDD Ke-2", "tariff": null, "provider": "SYABAS", "billingPeriod": null, "tnbAccount": "220076866100", "waterAccount": ""}, {"id": 4, "address": "Lot 3097-J, Kampung Sg. Pinang, Batu 2 1/2, Jalan Kapar, 42200 Klang", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "HDD", "usage": "Rumah HDD Ke-2", "tariff": "", "provider": null, "billingPeriod": "", "tnbAccount": "", "waterAccount": "1581232000.0"}, {"id": 5, "address": "Lot 3097-K, Jalan Keretapi Lama, Sg. Pinang, 41400 Klang, Selangor", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "HDD", "usage": "Asrama OHDD Ke-3", "tariff": null, "provider": "SYABAS", "billingPeriod": null, "tnbAccount": "220076861104", "waterAccount": ""}, {"id": 6, "address": "Lot 3097-K, Kampung Sg. Pinang, Batu 2 1/2 Jalan Kapar, 42200 Kapar, Selangor.", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "HDD", "usage": "Asrama Ke-3 OHDD", "tariff": "", "provider": null, "billingPeriod": "", "tnbAccount": "", "waterAccount": "5415132000.0"}, {"id": 7, "address": "Lot 3097-K, Kampung Sg. Pinang, Batu 2 1/2, Jalan Kapar, 42200 Klang", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "HDD", "usage": "Rumah HDD Ke-3", "tariff": "", "provider": null, "billingPeriod": "", "tnbAccount": "", "waterAccount": "5415132000.0"}, {"id": 8, "address": "Lot 42977, Jln Kapar, Batu 2 1/2, 41400 Klang, Selangor", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "HDD", "usage": "HDD Store", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "3941587568.0"}, {"id": 9, "address": "Lot 42977, Jln Tg Shawal Batu 2, Kg Sg. Pinang, 41200 Klang, Selangor ", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "HDD", "usage": "HDD Store", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "4th - 3rd", "tnbAccount": "220023585206", "waterAccount": ""}, {"id": 10, "address": "No. 12, Jln IKS Ayer Panas, Taman IKS Ayer Panas Fasa II, 77200 Bemban, Melaka", "company": "Power Teknik Sdn. Bhd.", "branch": "HDD", "usage": "P.Teknik Office", "tariff": "B : Perdagangan", "provider": "SAMB", "billingPeriod": "2nd - 1st", "tnbAccount": "220440604700", "waterAccount": "None"}, {"id": 11, "address": "No. 80 (1st Flr), Jalan PPMP 7, Pusat Perniagaan Manjung Point 1, 32040 Seri Manjung, Perak", "company": "Swis Resources Sdn. Bhd.", "branch": "HQ", "usage": "Vacant", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "7th - 6th", "tnbAccount": "220861829400'", "waterAccount": "21199807MG1078559"}, {"id": 12, "address": "No. 80 (GF), Jalan PPMP 7, Pusat Perniagaan Manjung Point 1, 32040 Seri Manjung, Perak", "company": "Swis Resources Sdn. Bhd.", "branch": "HQ", "usage": "Vacant", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "7th - 6th", "tnbAccount": "220861828000'", "waterAccount": "21199807MG1078568"}, {"id": 13, "address": "No. 28 (1st Flr), Jalan SS 19/5, Subang Jaya. Selangor", "company": "Khidmat Rentang Sdn Bhd", "branch": "HQ SHARE", "usage": "BD, OSJ, Proc, Tender & S/holder", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "23rd - 22nd", "tnbAccount": "210031336307", "waterAccount": "2000810175016/9990041000"}, {"id": 14, "address": "No. 32 (1st Flr), Jalan SS 19/5, Subang Jaya, Selangor", "company": "Swis Resources Sdn. Bhd.", "branch": "HQ SHARE", "usage": "Acct & Finance", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "20th - 19th", "tnbAccount": "220194484506", "waterAccount": "2000214105016/ 7667530000"}, {"id": 15, "address": "No. 32 (GF), Jalan SS 19/5, Subang Jaya, Selangor", "company": "Swis Resources Sdn. Bhd.", "branch": "HQ SHARE", "usage": "Seminar Hall", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "20th - 19th", "tnbAccount": "220194479201", "waterAccount": ""}, {"id": 16, "address": "No. 32-G Jalan SS19/5, Subang Jaya, Selangor", "company": "Swis Resources Sdn. Bhd.", "branch": "HQ SHARE", "usage": "Seminar Hall", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "2000213470015/ 4951630000"}, {"id": 17, "address": "Lot 1797-A, Jln Telok Kapas, Kg. Rantau Panjang, 42100 Klang, Selangor", "company": "Strategic Access Sdn. Bhd.", "branch": "OKLG", "usage": "Asrama S.Access", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "5th - 4th", "tnbAccount": "220153665001", "waterAccount": "7460370000.0"}, {"id": 18, "address": "Lot 24032, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OKLG", "usage": "Workshop & Lampu Jalan", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220115409202", "waterAccount": "2670040000.0"}, {"id": 19, "address": "Lot 24032-1, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OKLG", "usage": "OKLG Office", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220068007406", "waterAccount": "7042622000.0"}, {"id": 20, "address": "Lot 24032A, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OKLG", "usage": "Bilik Rosadi", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220304489005", "waterAccount": "7816522000.0"}, {"id": 21, "address": "Lot 24032B, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OKLG", "usage": "Office HDD / Bilik Pencawang", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220304491003", "waterAccount": "0570040000"}, {"id": 22, "address": "Lot 24032C, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OKLG", "usage": "Bilik Manday No. 3", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220304497704", "waterAccount": "7822522000"}, {"id": 23, "address": "Lot 24032D, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OKLG", "usage": "Bilik Manday No. 4", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220304501905", "waterAccount": "7570040000.0"}, {"id": 24, "address": "Lot 24032E, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OKLG", "usage": "Surau", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220012316003", "waterAccount": "9370040000.0"}, {"id": 25, "address": "Lot 24032F, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OKLG", "usage": "Bilik Manday No. 6", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220012313807", "waterAccount": ""}, {"id": 26, "address": "Lot 24032G, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OKLG", "usage": "Bilik Manday No. 7", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220011509506", "waterAccount": ""}, {"id": 27, "address": "Lot 24032H, Kg. Sg. Pinang, 41400 Klang, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OKLG", "usage": "Bilik TV", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220012314608", "waterAccount": "5470040000.0"}, {"id": 28, "address": "Lot 2490-D, Jalan Bakti, Kg. Rantau Panjang, 42100 Klang, Selangor", "company": "Swis Resources Sdn. Bhd.", "branch": "OKLG", "usage": "Vacant - Rumah Banglo", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "2905341878.0"}, {"id": 29, "address": "Lot 2490-D, Jalan Bakti, Kg. Rantau Panjang, 42100 Klang, Selangor (Bungalow)", "company": "Swis Resources Sdn. Bhd.", "branch": "OKLG", "usage": "Vacant", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "210365357104", "waterAccount": ""}, {"id": 30, "address": "Lot 26473, Jln Shapadu Batu 3, Off Jln Kapar, 41400 Klang, Selangor", "company": "Swis Resources Sdn. Bhd.", "branch": "OKLG", "usage": "OKLG Main Store", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "210166440307", "waterAccount": "5073465586.0"}, {"id": 31, "address": "Lot 26473-A, Jln Shapadu Highway, Kg. Rantau Panjang, 42100 Klang, Selangor", "company": "Rentang Bersatu Sdn. Bhd.", "branch": "OKLG", "usage": "R.Bersatu Office", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "210126760802", "waterAccount": "4748328748.0"}, {"id": 32, "address": "Lot 3097-R, Jalan Keretapi Lama, Sg. Pinang, 41400 Klang, Selangor", "company": "Fiffa Sdn. Bhd.", "branch": "OKLG", "usage": "Fiffa Office (Klang)", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220075895707", "waterAccount": "4288730000.0"}, {"id": 33, "address": "No 577, Jln Teluk Kapas, Kg Rantau Panjang, 42100 Klang Selangor", "company": "Strategic Access Sdn. Bhd.", "branch": "OKLG", "usage": "Vacant", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "5th - 4th", "tnbAccount": "220125497100", "waterAccount": ""}, {"id": 34, "address": "No. 30 (GF), Jalan SS 19/5, Subang Jaya, Selangor", "company": "Rentang Bersatu Sdn. Bhd.", "branch": "OKLG", "usage": "Vacant", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "20th - 19th", "tnbAccount": "210407647709", "waterAccount": "2000808744012/ 6858931000"}, {"id": 35, "address": "No. 53 (2nd Flr), Jalan SS 15/5A, Subang Jaya, Selangor", "company": "Swis Resources Sdn. Bhd.", "branch": "OKLG", "usage": "Fiffa Office", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "7770133168.0"}, {"id": 36, "address": "No. 53-2nd Flr, Jalan SS 15/5A, Subang Jaya, Selangor", "company": "Swis Resources Sdn. Bhd.", "branch": "OKLG", "usage": "Fiffa Office", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "210314306908", "waterAccount": ""}, {"id": 37, "address": "Lot 3885 (Kampong Tok Aminuddin Jln Air Hitam) ", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "OPJ", "usage": "OPJ", "tariff": "A : Kediaman", "provider": "SYABAS", "billingPeriod": "8th - 7th", "tnbAccount": "210210562400", "waterAccount": ""}, {"id": 38, "address": "Lot 3886 (Batu 2 1/2, Jln Air Hitam, Dengkil, Putrajaya", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "OPJ", "usage": "Office & Store", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "8417012000/9991478889"}, {"id": 39, "address": "Lot 3886, Batu 2 1/2, Jln Air Hitam, Dengkil, Putrajaya", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "OPJ", "usage": "Office & Store", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "8417012000/9991478889"}, {"id": 40, "address": "Lot 553, Kg. Kayu Ara, 70300 Seremban, Negeri Sembilan", "company": "EzyCable Sdn. Bhd.", "branch": "OSBN", "usage": "OSBN", "tariff": "B : Perdagangan", "provider": "SAINS", "billingPeriod": "11th -10th", "tnbAccount": "220416043103", "waterAccount": "050-0017492-0414"}, {"id": 41, "address": "Lot PT 1198, Jalan Subang 3, Tmn Perindustrian Subang, USJ 1, Subang Jaya, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OSJ", "usage": "HS3", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "25th - 24th", "tnbAccount": "220267423403", "waterAccount": "2000468917016/0464390000"}, {"id": 42, "address": "No. 34 (1st Flr), Jalan SS 19/5, Subang Jaya, Selangor", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "OSJ", "usage": "OSJ", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "2000808743013/ 5858931000"}, {"id": 43, "address": "No. 34 (1st Flr), Jalan SS 19/5, Subang Jaya, Selangor (NEM METER - SOLAR)", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "OSJ", "usage": "OSJ", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220194508706", "waterAccount": ""}, {"id": 44, "address": "No. 34 (GF), Jalan SS 19/5, Subang Jaya, Selangor", "company": "Akli (Malaysia) Sdn. Bhd.", "branch": "OSJ", "usage": "Hostel", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "20th - 19th", "tnbAccount": "220194505105", "waterAccount": "2000808742014/ 4858931000"}, {"id": 45, "address": "No. 36 (1st Flr), Jalan SS 19/5, Subang Jaya, Selangor ", "company": "Swis Resources Sdn. Bhd.", "branch": "OSJ", "usage": "Surau, Pantry HQ", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "2000216314018/ 8707730000"}, {"id": 46, "address": "No. 36 (GF), Jalan SS 19/5, Subang Jaya, Selangor ", "company": "Swis Resources Sdn. Bhd.", "branch": "OSJ", "usage": "Hostel", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "2000215778019/ 7804730000"}, {"id": 47, "address": "No. 38 (1st Flr), Jalan SS 19/5, Subang Jaya, Selangor ", "company": "Swis Resources Sdn. Bhd.", "branch": "OSJ", "usage": "Hostel", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "2000217356015/ 6570730000"}, {"id": 48, "address": "No. 38 (GF) Jalan SS 19/5, Subang Jaya, Selangor (NEM METER - SOLAR)", "company": "Swis Resources Sdn. Bhd.", "branch": "OSJ", "usage": "Hostel & Office (No. 38)", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "1st - 31st", "tnbAccount": "220194489709", "waterAccount": ""}, {"id": 49, "address": "No. 38 (GF), Jalan SS 19/5, Subang Jaya, Selangor ", "company": "Swis Resources Sdn. Bhd.", "branch": "OSJ", "usage": "Hostel", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "2000216845016/ 3728630000"}, {"id": 50, "address": "NO 12-02, Jalan Dataran Kulai 1, Taman Dataran Kulai, 81000 Kulai Johor", "company": "AMBC Transmission Sdn Bhd", "branch": "OTN", "usage": "AMBC Site Office", "tariff": null, "provider": null, "billingPeriod": null, "tnbAccount": "210462461706", "waterAccount": "86865957-L6359923"}, {"id": 51, "address": "No. 28 (GF), Jalan SS 19/5, Subang Jaya, Selangor", "company": "Swis Resources Sdn Bhd", "branch": "OTN", "usage": "OTN", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "20th - 19th", "tnbAccount": "210031341405", "waterAccount": "2000810177014/ 1001041000"}, {"id": 52, "address": "No. 30 (1st Flr), Jalan SS 19/5, Subang Jaya, Selangor", "company": "Strategic Access Sdn Bhd", "branch": "OTN", "usage": "OTN", "tariff": "", "provider": "SYABAS", "billingPeriod": "", "tnbAccount": "", "waterAccount": "2000808745011/ 9858931000"}, {"id": 53, "address": "No. 30 (1st Flr), Jalan SS 19/5, Subang Jaya, Selangor (NEM METER - SOLAR)", "company": "Strategic Access Sdn Bhd", "branch": "OTN", "usage": "OTN", "tariff": "B : Perdagangan", "provider": "SYABAS", "billingPeriod": "20th - 19th", "tnbAccount": "220228059110", "waterAccount": ""}], "records": {"48_elec_2025_JAN": {"reading": 4891.0, "cost": 2646.68, "remarks": ""}, "48_elec_2026_JAN": {"reading": 3131.0, "cost": 1194.64, "remarks": ""}, "44_elec_2025_JAN": {"reading": 477.0, "cost": 245.02, "remarks": ""}, "44_elec_2026_JAN": {"reading": 593.0, "cost": 292.46, "remarks": ""}, "43_elec_2025_JAN": {"reading": 1015.0, "cost": 538.62, "remarks": ""}, "43_elec_2026_JAN": {"reading": 544.0, "cost": 167.21, "remarks": ""}, "15_elec_2025_JAN": {"reading": 269.0, "cost": 131.81, "remarks": ""}, "15_elec_2026_JAN": {"reading": 228.0, "cost": 124.76, "remarks": ""}, "14_elec_2025_JAN": {"reading": 1027.0, "cost": 546.61, "remarks": ""}, "14_elec_2026_JAN": {"reading": 1108.0, "cost": 529.1, "remarks": ""}, "34_elec_2025_JAN": {"reading": 381.0, "cost": 192.29, "remarks": ""}, "34_elec_2026_JAN": {"reading": 196.0, "cost": 88.15, "remarks": ""}, "53_elec_2025_JAN": {"reading": 942.0, "cost": 499.6, "remarks": ""}, "53_elec_2026_JAN": {"reading": 640.0, "cost": 193.18, "remarks": ""}, "51_elec_2025_JAN": {"reading": 0.0, "cost": 7.21, "remarks": ""}, "51_elec_2026_JAN": {"reading": 0.0, "cost": 20.27, "remarks": ""}, "13_elec_2025_JAN": {"reading": 1106.0, "cost": 544.84, "remarks": ""}, "13_elec_2026_JAN": {"reading": 1211.0, "cost": 511.06, "remarks": ""}, "41_elec_2025_JAN": {"reading": 4286.0, "cost": 2323.65, "remarks": ""}, "41_elec_2026_JAN": {"reading": 3714.0, "cost": 1748.1, "remarks": ""}, "37_elec_2025_JAN": {"reading": 3698.0, "cost": 2560.65, "remarks": ""}, "37_elec_2026_JAN": {"reading": 4961.0, "cost": 2705.83, "remarks": ""}, "40_elec_2025_JAN": {"reading": 2109.0, "cost": 1135.1, "remarks": ""}, "40_elec_2026_JAN": {"reading": 2801.0, "cost": 1350.44, "remarks": ""}, "12_elec_2025_JAN": {"reading": 0.0, "cost": 7.45, "remarks": ""}, "12_elec_2026_JAN": {"reading": 0.0, "cost": 20.11, "remarks": ""}, "11_elec_2025_JAN": {"reading": 0.0, "cost": 7.2, "remarks": ""}, "11_elec_2026_JAN": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "29_elec_2025_JAN": {"reading": 477.0, "cost": 161.48, "remarks": ""}, "29_elec_2026_JAN": {"reading": 447.0, "cost": 136.05, "remarks": ""}, "19_elec_2025_JAN": {"reading": 3108.0, "cost": 1677.23, "remarks": ""}, "19_elec_2026_JAN": {"reading": 3209.0, "cost": 1512.2, "remarks": ""}, "18_elec_2025_JAN": {"reading": 1859.0, "cost": 942.14, "remarks": ""}, "18_elec_2026_JAN": {"reading": 2240.0, "cost": 1018.2, "remarks": ""}, "20_elec_2025_JAN": {"reading": 1157.0, "cost": 576.1, "remarks": ""}, "20_elec_2026_JAN": {"reading": 960.0, "cost": 403.05, "remarks": ""}, "21_elec_2025_JAN": {"reading": 30.0, "cost": 5.94, "remarks": ""}, "21_elec_2026_JAN": {"reading": 441.0, "cost": 134.3, "remarks": ""}, "22_elec_2025_JAN": {"reading": 889.0, "cost": 408.74, "remarks": ""}, "22_elec_2026_JAN": {"reading": 690.0, "cost": 252.0, "remarks": ""}, "23_elec_2025_JAN": {"reading": 255.0, "cost": 56.91, "remarks": ""}, "23_elec_2026_JAN": {"reading": 310.0, "cost": 73.9, "remarks": ""}, "24_elec_2025_JAN": {"reading": 123.0, "cost": 24.36, "remarks": ""}, "24_elec_2026_JAN": {"reading": 252.0, "cost": 55.3, "remarks": ""}, "25_elec_2025_JAN": {"reading": 244.0, "cost": 53.46, "remarks": ""}, "25_elec_2026_JAN": {"reading": 303.0, "cost": 72.2, "remarks": ""}, "26_elec_2025_JAN": {"reading": 294.0, "cost": 69.17, "remarks": ""}, "26_elec_2026_JAN": {"reading": 338.0, "cost": 80.55, "remarks": ""}, "27_elec_2025_JAN": {"reading": 319.0, "cost": 81.86, "remarks": ""}, "27_elec_2026_JAN": {"reading": 336.0, "cost": 80.1, "remarks": ""}, "2_elec_2025_JAN": {"reading": 1288.0, "cost": 678.4, "remarks": ""}, "2_elec_2026_JAN": {"reading": 1797.0, "cost": 978.0, "remarks": ""}, "3_elec_2026_JAN": {"reading": 84.0, "cost": 16.9, "remarks": ""}, "5_elec_2026_JAN": {"reading": 72.0, "cost": 14.0, "remarks": ""}, "32_elec_2025_JAN": {"reading": 140.0, "cost": 65.84, "remarks": ""}, "32_elec_2026_JAN": {"reading": 120.0, "cost": 62.5, "remarks": ""}, "33_elec_2025_JAN": {"reading": 90.0, "cost": 17.85, "remarks": ""}, "33_elec_2026_JAN": {"reading": 110.0, "cost": 21.4, "remarks": ""}, "17_elec_2025_JAN": {"reading": 151.0, "cost": 29.96, "remarks": ""}, "17_elec_2026_JAN": {"reading": 163.0, "cost": 15.15, "remarks": ""}, "30_elec_2025_JAN": {"reading": 864.0, "cost": 467.55, "remarks": ""}, "30_elec_2026_JAN": {"reading": 882.0, "cost": 441.9, "remarks": ""}, "31_elec_2025_JAN": {"reading": 404.0, "cost": 205.29, "remarks": ""}, "31_elec_2026_JAN": {"reading": 288.0, "cost": 154.2, "remarks": ""}, "9_elec_2025_JAN": {"reading": 249.0, "cost": 120.8, "remarks": ""}, "9_elec_2026_JAN": {"reading": 596.0, "cost": 318.8, "remarks": ""}, "10_elec_2025_JAN": {"reading": 0.0, "cost": 7.5, "remarks": ""}, "10_elec_2026_JAN": {"reading": 0.0, "cost": 20.23, "remarks": ""}, "0_elec_2025_JAN": {"reading": 0.0, "cost": 0.0, "remarks": ""}, "0_elec_2026_JAN": {"reading": 15.0, "cost": 26.61, "remarks": ""}, "36_elec_2025_JAN": {"reading": 0.0, "cost": 7.3, "remarks": ""}, "36_elec_2026_JAN": {"reading": 9.0, "cost": 23.57, "remarks": ""}, "48_elec_2025_FEB": {"reading": 4833.0, "cost": 2614.81, "remarks": ""}, "48_elec_2026_FEB": {"reading": 2582.0, "cost": 958.83, "remarks": ""}, "44_elec_2025_FEB": {"reading": 547.0, "cost": 282.77, "remarks": ""}, "44_elec_2026_FEB": {"reading": 609.0, "cost": 311.46, "remarks": ""}, "43_elec_2025_FEB": {"reading": 1004.0, "cost": 532.33, "remarks": ""}, "43_elec_2026_FEB": {"reading": 376.0, "cost": 133.66, "remarks": ""}, "15_elec_2025_FEB": {"reading": 205.0, "cost": 96.58, "remarks": ""}, "15_elec_2026_FEB": {"reading": 207.0, "cost": 119.08, "remarks": ""}, "14_elec_2025_FEB": {"reading": 1202.0, "cost": 639.46, "remarks": ""}, "14_elec_2026_FEB": {"reading": 1155.0, "cost": 573.73, "remarks": ""}, "34_elec_2025_FEB": {"reading": 290.0, "cost": 142.99, "remarks": ""}, "34_elec_2026_FEB": {"reading": 194.0, "cost": 91.47, "remarks": ""}, "53_elec_2025_FEB": {"reading": 1086.0, "cost": 577.47, "remarks": ""}, "53_elec_2026_FEB": {"reading": 446.0, "cost": 154.85, "remarks": ""}, "51_elec_2025_FEB": {"reading": 0.0, "cost": 7.2, "remarks": ""}, "51_elec_2026_FEB": {"reading": 0.0, "cost": 20.23, "remarks": ""}, "13_elec_2025_FEB": {"reading": 1133.0, "cost": 560.85, "remarks": ""}, "13_elec_2026_FEB": {"reading": 1082.0, "cost": 478.64, "remarks": ""}, "41_elec_2025_FEB": {"reading": 5370.0, "cost": 2907.02, "remarks": ""}, "41_elec_2026_FEB": {"reading": 3839.0, "cost": 1880.77, "remarks": ""}, "37_elec_2025_FEB": {"reading": 3308.0, "cost": 2274.47, "remarks": ""}, "37_elec_2026_FEB": {"reading": 4904.0, "cost": 2772.92, "remarks": ""}, "40_elec_2025_FEB": {"reading": 2496.0, "cost": 1343.14, "remarks": ""}, "40_elec_2026_FEB": {"reading": 2635.0, "cost": 1317.39, "remarks": ""}, "12_elec_2025_FEB": {"reading": 0.0, "cost": 7.48, "remarks": ""}, "12_elec_2026_FEB": {"reading": 0.0, "cost": 20.16, "remarks": ""}, "11_elec_2025_FEB": {"reading": 0.0, "cost": 7.2, "remarks": ""}, "11_elec_2026_FEB": {"reading": 0.0, "cost": 20.02, "remarks": ""}, "29_elec_2025_FEB": {"reading": 447.0, "cost": 146.36, "remarks": ""}, "29_elec_2026_FEB": {"reading": 423.0, "cost": 128.65, "remarks": ""}, "19_elec_2025_FEB": {"reading": 3133.0, "cost": 1689.77, "remarks": ""}, "19_elec_2026_FEB": {"reading": 2883.0, "cost": 1424.6, "remarks": ""}, "18_elec_2025_FEB": {"reading": 1827.0, "cost": 917.44, "remarks": ""}, "18_elec_2026_FEB": {"reading": 2094.0, "cost": 986.9000000000001, "remarks": ""}, "20_elec_2025_FEB": {"reading": 1030.0, "cost": 1689.77, "remarks": ""}, "20_elec_2026_FEB": {"reading": 765.0, "cost": 308.8, "remarks": ""}, "21_elec_2025_FEB": {"reading": 26.0, "cost": 5.15, "remarks": ""}, "21_elec_2026_FEB": {"reading": 410.0, "cost": 124.7, "remarks": ""}, "22_elec_2025_FEB": {"reading": 823.0, "cost": 368.96, "remarks": ""}, "22_elec_2026_FEB": {"reading": 685.0, "cost": 265.25, "remarks": ""}, "23_elec_2025_FEB": {"reading": 223.0, "cost": 46.82, "remarks": ""}, "23_elec_2026_FEB": {"reading": 333.0, "cost": 79.25, "remarks": ""}, "24_elec_2025_FEB": {"reading": 99.0, "cost": 19.6, "remarks": ""}, "24_elec_2026_FEB": {"reading": 344.0, "cost": 81.9, "remarks": ""}, "25_elec_2025_FEB": {"reading": 191.0, "cost": 37.82, "remarks": ""}, "25_elec_2026_FEB": {"reading": 334.0, "cost": 79.5, "remarks": ""}, "26_elec_2025_FEB": {"reading": 279.0, "cost": 64.41, "remarks": ""}, "26_elec_2026_FEB": {"reading": 345.0, "cost": 82.1, "remarks": ""}, "27_elec_2025_FEB": {"reading": 308.0, "cost": 76.27, "remarks": ""}, "27_elec_2026_FEB": {"reading": 341.0, "cost": 81.2, "remarks": ""}, "2_elec_2025_FEB": {"reading": 1493.0, "cost": 806.16, "remarks": ""}, "2_elec_2026_FEB": {"reading": 0.0, "cost": 874.3, "remarks": ""}, "3_elec_2026_FEB": {"reading": 92.0, "cost": 18.45, "remarks": ""}, "5_elec_2026_FEB": {"reading": 12.0, "cost": 2.35, "remarks": ""}, "32_elec_2025_FEB": {"reading": 129.0, "cost": 60.5, "remarks": ""}, "32_elec_2026_FEB": {"reading": 107.0, "cost": 60.2, "remarks": ""}, "33_elec_2025_FEB": {"reading": 467.0, "cost": 156.45, "remarks": ""}, "33_elec_2026_FEB": {"reading": 122.0, "cost": 23.8, "remarks": ""}, "17_elec_2025_FEB": {"reading": 90.0, "cost": 17.86, "remarks": ""}, "17_elec_2026_FEB": {"reading": 80.0, "cost": 15.6, "remarks": ""}, "30_elec_2025_FEB": {"reading": 776.0, "cost": 417.74, "remarks": ""}, "30_elec_2026_FEB": {"reading": 795.0, "cost": 418.5, "remarks": ""}, "31_elec_2025_FEB": {"reading": 374.0, "cost": 188.48, "remarks": ""}, "31_elec_2026_FEB": {"reading": 214.0, "cost": 124.25, "remarks": ""}, "1_elec_2025_FEB": {"reading": 253.0, "cost": 122.75, "remarks": ""}, "1_elec_2026_FEB": {"reading": 17.0, "cost": 11.85, "remarks": ""}, "10_elec_2025_FEB": {"reading": 0.0, "cost": 7.55, "remarks": ""}, "10_elec_2026_FEB": {"reading": 0.0, "cost": 20.19, "remarks": ""}, "0_elec_2025_FEB": {"reading": 30.0, "cost": 14.07, "remarks": ""}, "0_elec_2026_FEB": {"reading": 12.0, "cost": 25.87, "remarks": ""}, "36_elec_2025_FEB": {"reading": 0.0, "cost": 31.43, "remarks": ""}, "36_elec_2026_FEB": {"reading": 74.0, "cost": 48.17, "remarks": ""}, "48_elec_2025_MAR": {"reading": 4821.0, "cost": 2626.82, "remarks": ""}, "48_elec_2026_MAR": {"reading": 2884.0, "cost": 1073.67, "remarks": ""}, "44_elec_2025_MAR": {"reading": 511.0, "cost": 263.26, "remarks": ""}, "44_elec_2026_MAR": {"reading": 547.0, "cost": 288.8, "remarks": ""}, "43_elec_2025_MAR": {"reading": 1995.0, "cost": 523.9, "remarks": ""}, "43_elec_2026_MAR": {"reading": 372.0, "cost": 135.4, "remarks": ""}, "15_elec_2025_MAR": {"reading": 97.0, "cost": 45.63, "remarks": ""}, "15_elec_2026_MAR": {"reading": 106.0, "cost": 60.36, "remarks": ""}, "14_elec_2025_MAR": {"reading": 925.0, "cost": 488.86, "remarks": ""}, "14_elec_2026_MAR": {"reading": 1135.0, "cost": 578.21, "remarks": ""}, "34_elec_2025_MAR": {"reading": 294.0, "cost": 145.71, "remarks": ""}, "34_elec_2026_MAR": {"reading": 163.0, "cost": 81.97, "remarks": ""}, "53_elec_2025_MAR": {"reading": 942.0, "cost": 498.04, "remarks": ""}, "53_elec_2026_MAR": {"reading": 429.0, "cost": 153.09, "remarks": ""}, "51_elec_2025_MAR": {"reading": 0.0, "cost": 7.26, "remarks": ""}, "51_elec_2026_MAR": {"reading": 0.0, "cost": 20.29, "remarks": ""}, "13_elec_2025_MAR": {"reading": 1076.0, "cost": 525.53, "remarks": ""}, "13_elec_2026_MAR": {"reading": 1366.0, "cost": 622.26, "remarks": ""}, "41_elec_2025_MAR": {"reading": 3534.0, "cost": 1907.97, "remarks": ""}, "41_elec_2026_MAR": {"reading": 3468.0, "cost": 1736.46, "remarks": ""}, "37_elec_2025_MAR": {"reading": 3865.0, "cost": 2683.21, "remarks": ""}, "37_elec_2026_MAR": {"reading": 5664.0, "cost": 3257.36, "remarks": ""}, "40_elec_2025_MAR": {"reading": 2412.0, "cost": 1299.33, "remarks": ""}, "40_elec_2026_MAR": {"reading": 2763.0, "cost": 1405.16, "remarks": ""}, "12_elec_2025_MAR": {"reading": 0.0, "cost": 7.54, "remarks": ""}, "12_elec_2026_MAR": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "11_elec_2025_MAR": {"reading": 0.0, "cost": 7.2, "remarks": ""}, "11_elec_2026_MAR": {"reading": 0.0, "cost": 20.12, "remarks": ""}, "29_elec_2025_MAR": {"reading": 491.0, "cost": 168.55, "remarks": ""}, "29_elec_2026_MAR": {"reading": 486.0, "cost": 160.3, "remarks": ""}, "19_elec_2025_MAR": {"reading": 2946.0, "cost": 1588.01, "remarks": ""}, "19_elec_2026_MAR": {"reading": 3006.0, "cost": 1504.9, "remarks": ""}, "18_elec_2025_MAR": {"reading": 2063.0, "cost": 1046.32, "remarks": ""}, "18_elec_2026_MAR": {"reading": 2266.0, "cost": 1084.85, "remarks": ""}, "20_elec_2025_MAR": {"reading": 1026.0, "cost": 493.89, "remarks": ""}, "20_elec_2026_MAR": {"reading": 619.0, "cost": 230.8, "remarks": ""}, "21_elec_2025_MAR": {"reading": 34.0, "cost": 6.73, "remarks": ""}, "21_elec_2026_MAR": {"reading": 465.0, "cost": 153.4, "remarks": ""}, "22_elec_2025_MAR": {"reading": 736.0, "cost": 316.9, "remarks": ""}, "22_elec_2026_MAR": {"reading": 773.0, "cost": 317.35, "remarks": ""}, "23_elec_2025_MAR": {"reading": 244.0, "cost": 53.42, "remarks": ""}, "23_elec_2026_MAR": {"reading": 380.0, "cost": 106.0, "remarks": ""}, "24_elec_2025_MAR": {"reading": 121.0, "cost": 23.96, "remarks": ""}, "24_elec_2026_MAR": {"reading": 383.0, "cost": 106.8, "remarks": ""}, "25_elec_2025_MAR": {"reading": 268.0, "cost": 60.95, "remarks": ""}, "25_elec_2026_MAR": {"reading": 320.0, "cost": 76.25, "remarks": ""}, "26_elec_2025_MAR": {"reading": 364.0, "cost": 104.5, "remarks": ""}, "26_elec_2026_MAR": {"reading": 395.0, "cost": 110.2, "remarks": ""}, "27_elec_2025_MAR": {"reading": 370.0, "cost": 107.53, "remarks": ""}, "27_elec_2026_MAR": {"reading": 350.0, "cost": 84.45, "remarks": ""}, "2_elec_2025_MAR": {"reading": 1626.0, "cost": 1059.47, "remarks": ""}, "2_elec_2026_MAR": {"reading": 3975.0, "cost": 1391.1, "remarks": ""}, "3_elec_2026_MAR": {"reading": 14.0, "cost": 3.5, "remarks": ""}, "5_elec_2026_MAR": {"reading": 161.0, "cost": 31.3, "remarks": ""}, "32_elec_2025_MAR": {"reading": 140.0, "cost": 65.65, "remarks": ""}, "32_elec_2026_MAR": {"reading": 118.0, "cost": 65.15, "remarks": ""}, "33_elec_2025_MAR": {"reading": 32.0, "cost": 6.37, "remarks": ""}, "33_elec_2026_MAR": {"reading": 108.0, "cost": 21.0, "remarks": ""}, "17_elec_2025_MAR": {"reading": 129.0, "cost": 25.59, "remarks": ""}, "17_elec_2026_MAR": {"reading": 147.0, "cost": 13.0, "remarks": ""}, "30_elec_2025_MAR": {"reading": 832.0, "cost": 450.17, "remarks": ""}, "30_elec_2026_MAR": {"reading": 844.0, "cost": 448.2, "remarks": ""}, "31_elec_2025_MAR": {"reading": 446.0, "cost": 228.13, "remarks": ""}, "31_elec_2026_MAR": {"reading": 222.0, "cost": 129.75, "remarks": ""}, "1_elec_2025_MAR": {"reading": 225.0, "cost": 107.65, "remarks": ""}, "1_elec_2026_MAR": {"reading": 190.0, "cost": 93.15, "remarks": ""}, "10_elec_2025_MAR": {"reading": 0.0, "cost": 7.58, "remarks": ""}, "10_elec_2026_MAR": {"reading": 0.0, "cost": 20.24, "remarks": ""}, "0_elec_2025_MAR": {"reading": 37.0, "cost": 17.36, "remarks": ""}, "0_elec_2026_MAR": {"reading": 13.0, "cost": 26.33, "remarks": ""}, "36_elec_2025_MAR": {"reading": 0.0, "cost": 7.31, "remarks": ""}, "36_elec_2026_MAR": {"reading": 0.0, "cost": 20.45, "remarks": ""}, "48_elec_2025_APR": {"reading": 4924.0, "cost": 2664.33, "remarks": ""}, "48_elec_2026_APR": {"reading": 3222.0, "cost": 1400.56, "remarks": ""}, "44_elec_2025_APR": {"reading": 533.0, "cost": 274.99, "remarks": ""}, "44_elec_2026_APR": {"reading": 644.0, "cost": null, "remarks": ""}, "43_elec_2025_APR": {"reading": 916.0, "cost": 483.39, "remarks": ""}, "43_elec_2026_APR": {"reading": 509.0, "cost": 183.95, "remarks": ""}, "15_elec_2025_APR": {"reading": 113.0, "cost": 53.1, "remarks": ""}, "15_elec_2026_APR": {"reading": 246.0, "cost": 144.18, "remarks": ""}, "14_elec_2025_APR": {"reading": 1024.0, "cost": 542.81, "remarks": ""}, "14_elec_2026_APR": {"reading": 1249.0, "cost": 652.67, "remarks": ""}, "34_elec_2025_APR": {"reading": 261.0, "cost": 126.99, "remarks": ""}, "34_elec_2026_APR": {"reading": 186.0, "cost": 93.12, "remarks": ""}, "53_elec_2025_APR": {"reading": 800.0, "cost": 420.86, "remarks": ""}, "53_elec_2026_APR": {"reading": 565.0, "cost": 201.98, "remarks": ""}, "51_elec_2025_APR": {"reading": 0.0, "cost": 7.27, "remarks": ""}, "51_elec_2026_APR": {"reading": 0.0, "cost": 20.29, "remarks": ""}, "13_elec_2025_APR": {"reading": 1053.0, "cost": 514.37, "remarks": ""}, "13_elec_2026_APR": {"reading": 1130.0, "cost": 530.02, "remarks": ""}, "41_elec_2025_APR": {"reading": 6151.0, "cost": 3332.0, "remarks": ""}, "41_elec_2026_APR": {"reading": 12833.0, "cost": 2816.88, "remarks": ""}, "37_elec_2025_APR": {"reading": 4039.0, "cost": 2814.45, "remarks": ""}, "37_elec_2026_APR": {"reading": 5863.0, "cost": 3481.24, "remarks": ""}, "40_elec_2025_APR": {"reading": 2631.0, "cost": 1416.61, "remarks": ""}, "40_elec_2026_APR": {"reading": 2870.0, "cost": 1509.93, "remarks": ""}, "12_elec_2025_APR": {"reading": 0.0, "cost": 7.2, "remarks": ""}, "12_elec_2026_APR": {"reading": 0.0, "cost": 20.01, "remarks": ""}, "11_elec_2025_APR": {"reading": 0.0, "cost": 7.2, "remarks": ""}, "11_elec_2026_APR": {"reading": 0.0, "cost": 20.15, "remarks": ""}, "29_elec_2025_APR": {"reading": 454.0, "cost": 150.27, "remarks": ""}, "29_elec_2026_APR": {"reading": 453.0, "cost": 149.45, "remarks": ""}, "19_elec_2025_APR": {"reading": 2962.0, "cost": 1596.72, "remarks": ""}, "19_elec_2026_APR": {"reading": 3978.0, "cost": 2051.2, "remarks": ""}, "18_elec_2025_APR": {"reading": 2022.0, "cost": 1024.03, "remarks": ""}, "18_elec_2026_APR": {"reading": 2334.0, "cost": 1145.15, "remarks": ""}, "20_elec_2025_APR": {"reading": 849.0, "cost": 384.5, "remarks": ""}, "20_elec_2026_APR": {"reading": 918.0, "cost": 427.7, "remarks": ""}, "21_elec_2025_APR": {"reading": 37.0, "cost": 7.33, "remarks": ""}, "21_elec_2026_APR": {"reading": 563.0, "cost": 202.85, "remarks": ""}, "22_elec_2025_APR": {"reading": 799.0, "cost": 354.59, "remarks": ""}, "22_elec_2026_APR": {"reading": 754.0, "cost": 322.25, "remarks": ""}, "23_elec_2025_APR": {"reading": 273.0, "cost": 62.52, "remarks": ""}, "23_elec_2026_APR": {"reading": 376.0, "cost": 104.9, "remarks": ""}, "24_elec_2025_APR": {"reading": 108.0, "cost": 21.4, "remarks": ""}, "24_elec_2026_APR": {"reading": 347.0, "cost": 82.7, "remarks": ""}, "25_elec_2025_APR": {"reading": 248.0, "cost": 54.67, "remarks": ""}, "25_elec_2026_APR": {"reading": 306.0, "cost": 72.95, "remarks": ""}, "26_elec_2025_APR": {"reading": 308.0, "cost": 76.27, "remarks": ""}, "26_elec_2026_APR": {"reading": 380.0, "cost": 106.0, "remarks": ""}, "27_elec_2025_APR": {"reading": 330.0, "cost": 87.36, "remarks": ""}, "27_elec_2026_APR": {"reading": 317.0, "cost": 75.55, "remarks": ""}, "2_elec_2025_APR": {"reading": 1239.0, "cost": 647.22, "remarks": ""}, "2_elec_2026_APR": {"reading": 2231.0, "cost": 1320.05, "remarks": ""}, "3_elec_2026_APR": {"reading": 2.0, "cost": 1.4, "remarks": ""}, "5_elec_2026_APR": {"reading": 333.0, "cost": 79.3, "remarks": ""}, "32_elec_2025_APR": {"reading": 127.0, "cost": 59.72, "remarks": ""}, "32_elec_2026_APR": {"reading": 114.0, "cost": 65.5, "remarks": ""}, "33_elec_2025_APR": {"reading": 32.0, "cost": 6.7, "remarks": ""}, "33_elec_2026_APR": {"reading": 125.0, "cost": 24.3, "remarks": ""}, "17_elec_2025_APR": {"reading": 92.0, "cost": 18.26, "remarks": ""}, "17_elec_2026_APR": {"reading": 0.0, "cost": 14.95, "remarks": ""}, "30_elec_2025_APR": {"reading": 884.0, "cost": 478.07, "remarks": ""}, "30_elec_2026_APR": {"reading": 743.0, "cost": 410.8, "remarks": ""}, "31_elec_2025_APR": {"reading": 442.0, "cost": 225.98, "remarks": ""}, "31_elec_2026_APR": {"reading": 272.0, "cost": 158.95, "remarks": ""}, "1_elec_2025_APR": {"reading": 521.0, "cost": 147.32, "remarks": ""}, "1_elec_2026_APR": {"reading": 128.0, "cost": 71.6, "remarks": ""}, "10_elec_2025_APR": {"reading": 0.0, "cost": 7.57, "remarks": ""}, "10_elec_2026_APR": {"reading": 0.0, "cost": 20.21, "remarks": ""}, "0_elec_2025_APR": {"reading": 11.0, "cost": 7.36, "remarks": ""}, "0_elec_2026_APR": {"reading": 12.0, "cost": 27.55, "remarks": ""}, "36_elec_2025_APR": {"reading": 0.0, "cost": 7.4, "remarks": ""}, "36_elec_2026_APR": {"reading": 0.0, "cost": 20.82, "remarks": ""}, "48_elec_2025_MAY": {"reading": 4885.0, "cost": 2658.15, "remarks": ""}, "48_elec_2026_MAY": {"reading": 3184.0, "cost": 1365.21, "remarks": ""}, "44_elec_2025_MAY": {"reading": 548.0, "cost": 283.77, "remarks": ""}, "44_elec_2026_MAY": {"reading": 550.0, "cost": 307.64, "remarks": ""}, "43_elec_2025_MAY": {"reading": 1423.0, "cost": 580.31, "remarks": ""}, "43_elec_2026_MAY": {"reading": 532.0, "cost": 185.93, "remarks": ""}, "15_elec_2025_MAY": {"reading": 297.0, "cost": 146.78, "remarks": ""}, "15_elec_2026_MAY": {"reading": 178.0, "cost": 93.55, "remarks": ""}, "14_elec_2025_MAY": {"reading": 1231.0, "cost": 657.08, "remarks": ""}, "14_elec_2026_MAY": {"reading": 1468.0, "cost": 790.76, "remarks": ""}, "34_elec_2025_MAY": {"reading": 387.0, "cost": 195.93, "remarks": ""}, "34_elec_2026_MAY": {"reading": 181.0, "cost": 94.98, "remarks": ""}, "53_elec_2025_MAY": {"reading": 1382.0, "cost": 709.0, "remarks": ""}, "53_elec_2026_MAY": {"reading": 472.0, "cost": 167.22, "remarks": ""}, "51_elec_2025_MAY": {"reading": 0.0, "cost": 7.31, "remarks": ""}, "51_elec_2026_MAY": {"reading": 0.0, "cost": 20.38, "remarks": ""}, "13_elec_2025_MAY": {"reading": 1185.0, "cost": 593.39, "remarks": ""}, "13_elec_2026_MAY": {"reading": 1290.0, "cost": 629.58, "remarks": ""}, "41_elec_2025_MAY": {"reading": 2798.0, "cost": 2597.04, "remarks": ""}, "41_elec_2026_MAY": {"reading": 4103.0, "cost": 2182.87, "remarks": ""}, "37_elec_2025_MAY": {"reading": 4395.0, "cost": 3074.63, "remarks": ""}, "37_elec_2026_MAY": {"reading": 5962.0, "cost": 3646.97, "remarks": ""}, "40_elec_2025_MAY": {"reading": 2608.0, "cost": 1409.09, "remarks": ""}, "40_elec_2026_MAY": {"reading": 3040.0, "cost": 1640.31, "remarks": ""}, "12_elec_2025_MAY": {"reading": 0.0, "cost": 7.23, "remarks": ""}, "12_elec_2026_MAY": {"reading": 0.0, "cost": 20.16, "remarks": ""}, "11_elec_2025_MAY": {"reading": 0.0, "cost": 7.47, "remarks": ""}, "11_elec_2026_MAY": {"reading": 0.0, "cost": 20.18, "remarks": ""}, "29_elec_2025_MAY": {"reading": 501.0, "cost": 174.15, "remarks": ""}, "29_elec_2026_MAY": {"reading": 475.0, "cost": 156.95, "remarks": ""}, "19_elec_2025_MAY": {"reading": 3888.0, "cost": 2106.43, "remarks": ""}, "19_elec_2026_MAY": {"reading": 3147.0, "cost": 1687.25, "remarks": ""}, "18_elec_2025_MAY": {"reading": 2350.0, "cost": 1202.3200000000002, "remarks": ""}, "18_elec_2026_MAY": {"reading": 2287.0, "cost": 1153.3999999999999, "remarks": ""}, "20_elec_2025_MAY": {"reading": 956.0, "cost": 450.56, "remarks": ""}, "20_elec_2026_MAY": {"reading": 882.0, "cost": 422.9, "remarks": ""}, "21_elec_2025_MAY": {"reading": 236.0, "cost": 50.91, "remarks": ""}, "21_elec_2026_MAY": {"reading": 464.0, "cost": 153.3, "remarks": ""}, "22_elec_2025_MAY": {"reading": 920.0, "cost": 427.85, "remarks": ""}, "22_elec_2026_MAY": {"reading": 781.0, "cost": 349.3, "remarks": ""}, "23_elec_2025_MAY": {"reading": 345.0, "cost": 94.97, "remarks": ""}, "23_elec_2026_MAY": {"reading": 393.0, "cost": 109.8, "remarks": ""}, "24_elec_2025_MAY": {"reading": 107.0, "cost": 21.21, "remarks": ""}, "24_elec_2026_MAY": {"reading": 421.0, "cost": 128.3, "remarks": ""}, "25_elec_2025_MAY": {"reading": 308.0, "cost": 76.33, "remarks": ""}, "25_elec_2026_MAY": {"reading": 334.0, "cost": 79.55, "remarks": ""}, "26_elec_2025_MAY": {"reading": 378.0, "cost": 111.65, "remarks": ""}, "26_elec_2026_MAY": {"reading": 436.0, "cost": 132.75, "remarks": ""}, "27_elec_2025_MAY": {"reading": 349.0, "cost": 97.05, "remarks": ""}, "27_elec_2026_MAY": {"reading": 327.0, "cost": 77.95, "remarks": ""}, "2_elec_2025_MAY": {"reading": 1295.0, "cost": 684.29, "remarks": ""}, "2_elec_2026_MAY": {"reading": 2231.0, "cost": 1320.05, "remarks": ""}, "3_elec_2026_MAY": {"reading": 2.0, "cost": 1.45, "remarks": ""}, "5_elec_2026_MAY": {"reading": 397.0, "cost": 110.95, "remarks": ""}, "32_elec_2025_MAY": {"reading": 130.0, "cost": 61.02, "remarks": ""}, "32_elec_2026_MAY": {"reading": 136.0, "cost": 76.9, "remarks": ""}, "33_elec_2025_MAY": {"reading": 45.0, "cost": 8.9, "remarks": ""}, "33_elec_2026_MAY": {"reading": 133.0, "cost": 25.85, "remarks": ""}, "17_elec_2025_MAY": {"reading": 92.0, "cost": 32.14, "remarks": ""}, "17_elec_2026_MAY": {"reading": 100.0, "cost": 4.5, "remarks": ""}, "30_elec_2025_MAY": {"reading": 918.0, "cost": 497.35, "remarks": ""}, "30_elec_2026_MAY": {"reading": 405.0, "cost": 246.5, "remarks": ""}, "31_elec_2025_MAY": {"reading": 628.0, "cost": 326.84, "remarks": ""}, "31_elec_2026_MAY": {"reading": 432.0, "cost": 248.75, "remarks": ""}, "1_elec_2025_MAY": {"reading": 297.0, "cost": 146.85, "remarks": ""}, "1_elec_2026_MAY": {"reading": 244.0, "cost": 68.75, "remarks": ""}, "10_elec_2025_MAY": {"reading": 14.0, "cost": 7.41, "remarks": ""}, "10_elec_2026_MAY": {"reading": 0.0, "cost": 20.18, "remarks": ""}, "0_elec_2025_MAY": {"reading": 12.0, "cost": 7.28, "remarks": ""}, "0_elec_2026_MAY": {"reading": 11.0, "cost": 25.92, "remarks": ""}, "36_elec_2025_MAY": {"reading": 0.0, "cost": 7.25, "remarks": ""}, "36_elec_2026_MAY": {"reading": 0.0, "cost": 21.02, "remarks": ""}, "50_elec_2026_MAY": {"reading": 5.0, "cost": 22.26, "remarks": "OWNER BYRKN"}, "48_elec_2025_JUNE": {"reading": 2970.0, "cost": 1271.33, "remarks": ""}, "48_elec_2026_JUNE": {"reading": 3244.0, "cost": 1445.3, "remarks": ""}, "44_elec_2025_JUNE": {"reading": 576.0, "cost": 298.38, "remarks": ""}, "44_elec_2026_JUNE": {"reading": 589.0, "cost": 335.79, "remarks": ""}, "43_elec_2025_JUNE": {"reading": 413.0, "cost": 94.25, "remarks": ""}, "43_elec_2026_JUNE": {"reading": 493.0, "cost": 172.59, "remarks": ""}, "15_elec_2025_JUNE": {"reading": 311.0, "cost": 154.2, "remarks": ""}, "15_elec_2026_JUNE": {"reading": 158.0, "cost": 87.05, "remarks": ""}, "14_elec_2025_JUNE": {"reading": 1472.0, "cost": 785.94, "remarks": ""}, "14_elec_2026_JUNE": {"reading": 1571.0, "cost": 862.25, "remarks": ""}, "34_elec_2025_JUNE": {"reading": 325.0, "cost": 161.82, "remarks": ""}, "34_elec_2026_JUNE": {"reading": 186.0, "cost": 98.93, "remarks": ""}, "53_elec_2025_JUNE": {"reading": 545.0, "cost": 101.3, "remarks": ""}, "53_elec_2026_JUNE": {"reading": 342.0, "cost": 125.85, "remarks": ""}, "51_elec_2025_JUNE": {"reading": 0.0, "cost": 7.2, "remarks": ""}, "51_elec_2026_JUNE": {"reading": 0.0, "cost": 20.41, "remarks": ""}, "13_elec_2025_JUNE": {"reading": 1366.0, "cost": 706.67, "remarks": ""}, "13_elec_2026_JUNE": {"reading": 1235.0, "cost": 619.64, "remarks": ""}, "41_elec_2025_JUNE": {"reading": 5223.0, "cost": 2827.56, "remarks": ""}, "41_elec_2026_JUNE": {"reading": 7715.0, "cost": 1976.92, "remarks": ""}, "37_elec_2025_JUNE": {"reading": 4532.0, "cost": 3037.75, "remarks": ""}, "37_elec_2026_JUNE": {"reading": 6039.0, "cost": 3771.35, "remarks": ""}, "40_elec_2025_JUNE": {"reading": 2504.0, "cost": 1329.76, "remarks": ""}, "40_elec_2026_JUNE": {"reading": 1979.0, "cost": 1099.2, "remarks": ""}, "12_elec_2025_JUNE": {"reading": 0.0, "cost": 9.57, "remarks": ""}, "12_elec_2026_JUNE": {"reading": 0.0, "cost": 20.02, "remarks": ""}, "11_elec_2025_JUNE": {"reading": 0.0, "cost": null, "remarks": ""}, "11_elec_2026_JUNE": {"reading": 0.0, "cost": 20.02, "remarks": ""}, "29_elec_2025_JUNE": {"reading": 440.0, "cost": 142.83, "remarks": ""}, "29_elec_2026_JUNE": {"reading": 454.0, "cost": 149.7, "remarks": ""}, "19_elec_2025_JUNE": {"reading": 3436.0, "cost": 1854.64, "remarks": ""}, "19_elec_2026_JUNE": {"reading": 3323.0, "cost": 1818.3, "remarks": ""}, "18_elec_2025_JUNE": {"reading": 2181.0, "cost": 1107.42, "remarks": ""}, "18_elec_2026_JUNE": {"reading": 2269.0, "cost": 1168.4, "remarks": ""}, "20_elec_2025_JUNE": {"reading": 747.0, "cost": 323.47, "remarks": ""}, "20_elec_2026_JUNE": {"reading": 899.0, "cost": 442.05, "remarks": ""}, "21_elec_2025_JUNE": {"reading": 444.0, "cost": 144.84, "remarks": ""}, "21_elec_2026_JUNE": {"reading": 467.0, "cost": 154.0, "remarks": ""}, "22_elec_2025_JUNE": {"reading": 786.0, "cost": 346.81, "remarks": ""}, "22_elec_2026_JUNE": {"reading": 660.0, "cost": 291.15, "remarks": ""}, "23_elec_2025_JUNE": {"reading": 315.0, "cost": 79.8, "remarks": ""}, "23_elec_2026_JUNE": {"reading": 331.0, "cost": 78.85, "remarks": ""}, "24_elec_2025_JUNE": {"reading": 117.0, "cost": 23.17, "remarks": ""}, "24_elec_2026_JUNE": {"reading": 425.0, "cost": 129.3, "remarks": ""}, "25_elec_2025_JUNE": {"reading": 319.0, "cost": 81.81, "remarks": ""}, "25_elec_2026_JUNE": {"reading": 298.0, "cost": 65.4, "remarks": ""}, "26_elec_2025_JUNE": {"reading": 340.0, "cost": 92.4, "remarks": ""}, "26_elec_2026_JUNE": {"reading": 433.0, "cost": 131.75, "remarks": ""}, "27_elec_2025_JUNE": {"reading": 350.0, "cost": 97.44, "remarks": ""}, "27_elec_2026_JUNE": {"reading": 343.0, "cost": 81.7, "remarks": ""}, "2_elec_2025_JUNE": {"reading": 1239.0, "cost": 629.46, "remarks": ""}, "2_elec_2026_JUNE": {"reading": 2062.0, "cost": 1284.55, "remarks": ""}, "3_elec_2026_JUNE": {"reading": 2.0, "cost": 1.45, "remarks": ""}, "5_elec_2026_JUNE": {"reading": 332.0, "cost": 80.1, "remarks": ""}, "32_elec_2025_JUNE": {"reading": 164.0, "cost": 76.91, "remarks": ""}, "32_elec_2026_JUNE": {"reading": 139.0, "cost": 79.7, "remarks": ""}, "33_elec_2025_JUNE": {"reading": 21.0, "cost": 4.93, "remarks": ""}, "33_elec_2026_JUNE": {"reading": 129.0, "cost": 25.1, "remarks": ""}, "17_elec_2025_JUNE": {"reading": 135.0, "cost": 26.65, "remarks": ""}, "17_elec_2026_JUNE": {"reading": 144.0, "cost": 27.95, "remarks": ""}, "30_elec_2025_JUNE": {"reading": 923.0, "cost": 498.17, "remarks": ""}, "30_elec_2026_JUNE": {"reading": 323.0, "cost": 206.1, "remarks": ""}, "31_elec_2025_JUNE": {"reading": 476.0, "cost": 243.97, "remarks": ""}, "31_elec_2026_JUNE": {"reading": 405.0, "cost": 239.15, "remarks": ""}, "1_elec_2025_JUNE": {"reading": 260.0, "cost": 143.38, "remarks": ""}, "1_elec_2026_JUNE": {"reading": 125.0, "cost": 73.85, "remarks": ""}, "10_elec_2025_JUNE": {"reading": 0.0, "cost": 7.87, "remarks": ""}, "10_elec_2026_JUNE": {"reading": 0.0, "cost": 20.2, "remarks": ""}, "0_elec_2025_JUNE": {"reading": 20.0, "cost": 9.38, "remarks": ""}, "36_elec_2025_JUNE": {"reading": 0.0, "cost": 7.2, "remarks": ""}, "36_elec_2026_JUNE": {"reading": 0.0, "cost": 20.95, "remarks": ""}, "48_elec_2025_JULY": {"reading": 3180.0, "cost": 1362.17, "remarks": ""}, "48_elec_2026_JULY": {"reading": 3467.0, "cost": 1679.3, "remarks": ""}, "44_elec_2025_JULY": {"reading": 586.0, "cost": 305.64, "remarks": ""}, "43_elec_2025_JULY": {"reading": 525.0, "cost": 182.92, "remarks": ""}, "43_elec_2026_JULY": {"reading": 615.0, "cost": 223.44, "remarks": ""}, "15_elec_2025_JULY": {"reading": 167.0, "cost": 112.82, "remarks": ""}, "14_elec_2025_JULY": {"reading": 1310.0, "cost": 686.64, "remarks": ""}, "34_elec_2025_JULY": {"reading": 357.0, "cost": 190.7, "remarks": ""}, "53_elec_2025_JULY": {"reading": 545.0, "cost": 191.91, "remarks": ""}, "53_elec_2026_JULY": {"reading": 403.0, "cost": 153.31, "remarks": ""}, "51_elec_2025_JULY": {"reading": 0.0, "cost": 15.31, "remarks": ""}, "13_elec_2025_JULY": {"reading": 1315.0, "cost": 566.22, "remarks": ""}, "41_elec_2025_JULY": {"reading": 5133.0, "cost": 2677.86, "remarks": ""}, "37_elec_2025_JULY": {"reading": 4603.0, "cost": 2725.98, "remarks": ""}, "37_elec_2026_JULY": {"reading": 6098.0, "cost": 3871.61, "remarks": ""}, "40_elec_2025_JULY": {"reading": 2503.0, "cost": 1297.9, "remarks": ""}, "12_elec_2025_JULY": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "11_elec_2025_JULY": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "29_elec_2025_JULY": {"reading": 423.0, "cost": 128.64, "remarks": ""}, "19_elec_2025_JULY": {"reading": 4042.0, "cost": 2101.26, "remarks": ""}, "18_elec_2025_JULY": {"reading": 2265.0, "cost": 1120.15, "remarks": ""}, "18_elec_2026_JULY": {"reading": 525.0, "cost": 360.2, "remarks": ""}, "20_elec_2025_JULY": {"reading": 1073.0, "cost": 511.97, "remarks": ""}, "20_elec_2026_JULY": {"reading": 1017.0, "cost": 964.9, "remarks": ""}, "21_elec_2025_JULY": {"reading": 552.0, "cost": 198.71, "remarks": ""}, "21_elec_2026_JULY": {"reading": 554.0, "cost": 353.6, "remarks": ""}, "22_elec_2025_JULY": {"reading": 826.0, "cost": 370.26, "remarks": ""}, "22_elec_2026_JULY": {"reading": 687.0, "cost": 601.65, "remarks": ""}, "23_elec_2025_JULY": {"reading": 280.0, "cost": 61.4, "remarks": ""}, "23_elec_2026_JULY": {"reading": 322.0, "cost": 155.6, "remarks": ""}, "24_elec_2025_JULY": {"reading": 73.0, "cost": 14.2, "remarks": ""}, "24_elec_2026_JULY": {"reading": 437.0, "cost": 262.3, "remarks": ""}, "25_elec_2025_JULY": {"reading": 241.0, "cost": 48.03, "remarks": ""}, "25_elec_2026_JULY": {"reading": 289.0, "cost": 128.85, "remarks": ""}, "26_elec_2025_JULY": {"reading": 303.0, "cost": 72.14, "remarks": ""}, "26_elec_2026_JULY": {"reading": 393.0, "cost": 241.4, "remarks": ""}, "27_elec_2025_JULY": {"reading": 309.0, "cost": 73.56, "remarks": ""}, "27_elec_2026_JULY": {"reading": 340.0, "cost": 162.7, "remarks": ""}, "2_elec_2025_JULY": {"reading": 1206.0, "cost": 586.14, "remarks": ""}, "32_elec_2025_JULY": {"reading": 179.0, "cost": 92.17, "remarks": ""}, "33_elec_2025_JULY": {"reading": 96.0, "cost": 18.66, "remarks": ""}, "17_elec_2025_JULY": {"reading": 135.0, "cost": 26.3, "remarks": ""}, "30_elec_2025_JULY": {"reading": 955.0, "cost": 522.92, "remarks": ""}, "31_elec_2025_JULY": {"reading": 498.0, "cost": 276.42, "remarks": ""}, "1_elec_2025_JULY": {"reading": 288.0, "cost": 167.89, "remarks": ""}, "10_elec_2025_JULY": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "36_elec_2025_JULY": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "48_elec_2025_AUG": {"reading": 3084.0, "cost": 1237.75, "remarks": ""}, "44_elec_2025_AUG": {"reading": 600.0, "cost": 323.61, "remarks": ""}, "43_elec_2025_AUG": {"reading": 581.0, "cost": 195.69, "remarks": ""}, "15_elec_2025_AUG": {"reading": 72.0, "cost": 49.52, "remarks": ""}, "14_elec_2025_AUG": {"reading": 1572.0, "cost": 815.48, "remarks": ""}, "34_elec_2025_AUG": {"reading": 383.0, "cost": 213.8, "remarks": ""}, "53_elec_2025_AUG": {"reading": 409.0, "cost": 143.68, "remarks": ""}, "51_elec_2025_AUG": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "13_elec_2025_AUG": {"reading": 1442.0, "cost": 676.14, "remarks": ""}, "41_elec_2025_AUG": {"reading": 6779.0, "cost": 3434.47, "remarks": ""}, "37_elec_2025_AUG": {"reading": 4640.0, "cost": 2692.18, "remarks": ""}, "40_elec_2025_AUG": {"reading": 2361.0, "cost": 1208.6, "remarks": ""}, "12_elec_2025_AUG": {"reading": 0.0, "cost": 19.95, "remarks": ""}, "11_elec_2025_AUG": {"reading": 0.0, "cost": 19.95, "remarks": ""}, "29_elec_2025_AUG": {"reading": 405.0, "cost": 123.6, "remarks": ""}, "19_elec_2025_AUG": {"reading": 3514.0, "cost": 1779.65, "remarks": ""}, "18_elec_2025_AUG": {"reading": 2356.0, "cost": 1148.8, "remarks": ""}, "20_elec_2025_AUG": {"reading": 787.0, "cost": 328.7, "remarks": ""}, "21_elec_2025_AUG": {"reading": 505.0, "cost": 174.15, "remarks": ""}, "22_elec_2025_AUG": {"reading": 622.0, "cost": 236.0, "remarks": ""}, "23_elec_2025_AUG": {"reading": 305.0, "cost": 72.65, "remarks": ""}, "24_elec_2025_AUG": {"reading": 81.0, "cost": 15.75, "remarks": ""}, "25_elec_2025_AUG": {"reading": 264.0, "cost": 57.95, "remarks": ""}, "26_elec_2025_AUG": {"reading": 360.0, "cost": 100.4, "remarks": ""}, "27_elec_2025_AUG": {"reading": 322.0, "cost": 76.7, "remarks": ""}, "2_elec_2025_AUG": {"reading": 1403.0, "cost": 663.05, "remarks": ""}, "32_elec_2025_AUG": {"reading": 121.0, "cost": 67.05, "remarks": ""}, "33_elec_2025_AUG": {"reading": 103.0, "cost": 20.0, "remarks": ""}, "17_elec_2025_AUG": {"reading": 82.0, "cost": 16.0, "remarks": ""}, "30_elec_2025_AUG": {"reading": 999.0, "cost": 531.4, "remarks": ""}, "31_elec_2025_AUG": {"reading": 492.0, "cost": 266.35, "remarks": ""}, "1_elec_2025_AUG": {"reading": 586.0, "cost": 170.6, "remarks": ""}, "10_elec_2025_AUG": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "36_elec_2025_AUG": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "48_elec_2025_SEPT": {"reading": 2841.0, "cost": 1117.41, "remarks": ""}, "44_elec_2025_SEPT": {"reading": 584.0, "cost": 313.9, "remarks": ""}, "43_elec_2025_SEPT": {"reading": 431.0, "cost": 153.44, "remarks": ""}, "15_elec_2025_SEPT": {"reading": 198.0, "cost": 96.11, "remarks": ""}, "14_elec_2025_SEPT": {"reading": 1189.0, "cost": 618.46, "remarks": ""}, "34_elec_2025_SEPT": {"reading": 332.0, "cost": 187.1, "remarks": ""}, "53_elec_2025_SEPT": {"reading": 466.0, "cost": 164.3, "remarks": ""}, "51_elec_2025_SEPT": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "13_elec_2025_SEPT": {"reading": 1012.0, "cost": 470.25, "remarks": ""}, "41_elec_2025_SEPT": {"reading": 4457.0, "cost": 2262.4, "remarks": ""}, "37_elec_2025_SEPT": {"reading": 4098.0, "cost": 2326.04, "remarks": ""}, "40_elec_2025_SEPT": {"reading": 2281.0, "cost": 1141.1, "remarks": ""}, "12_elec_2025_SEPT": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "11_elec_2025_SEPT": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "29_elec_2025_SEPT": {"reading": 384.0, "cost": 108.2, "remarks": ""}, "19_elec_2025_SEPT": {"reading": 2973.0, "cost": 1537.05, "remarks": ""}, "18_elec_2025_SEPT": {"reading": 2172.0, "cost": 1062.85, "remarks": ""}, "20_elec_2025_SEPT": {"reading": 804.0, "cost": 355.55, "remarks": ""}, "21_elec_2025_SEPT": {"reading": 455.0, "cost": 151.7, "remarks": ""}, "22_elec_2025_SEPT": {"reading": 601.0, "cost": 233.0, "remarks": ""}, "23_elec_2025_SEPT": {"reading": 334.0, "cost": 85.05, "remarks": ""}, "24_elec_2025_SEPT": {"reading": 79.0, "cost": 15.45, "remarks": ""}, "25_elec_2025_SEPT": {"reading": 279.0, "cost": 61.6, "remarks": ""}, "26_elec_2025_SEPT": {"reading": 359.0, "cost": 100.7, "remarks": ""}, "27_elec_2025_SEPT": {"reading": 322.0, "cost": 77.35, "remarks": ""}, "2_elec_2025_SEPT": {"reading": 1421.0, "cost": 668.25, "remarks": ""}, "32_elec_2025_SEPT": {"reading": 117.0, "cost": 65.9, "remarks": ""}, "33_elec_2025_SEPT": {"reading": 114.0, "cost": 22.15, "remarks": ""}, "17_elec_2025_SEPT": {"reading": 115.0, "cost": 22.4, "remarks": ""}, "30_elec_2025_SEPT": {"reading": 928.0, "cost": 498.8, "remarks": ""}, "31_elec_2025_SEPT": {"reading": 397.0, "cost": 220.05, "remarks": ""}, "1_elec_2025_SEPT": {"reading": 285.0, "cost": 162.1, "remarks": ""}, "10_elec_2025_SEPT": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "36_elec_2025_SEPT": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "48_elec_2025_OCT": {"reading": 2955.0, "cost": 1012.15, "remarks": ""}, "44_elec_2025_OCT": {"reading": 522.0, "cost": 265.16, "remarks": ""}, "43_elec_2025_OCT": {"reading": 425.0, "cost": 126.59, "remarks": ""}, "15_elec_2025_OCT": {"reading": 168.0, "cost": 80.16, "remarks": ""}, "14_elec_2025_OCT": {"reading": 1234.0, "cost": 599.6, "remarks": ""}, "34_elec_2025_OCT": {"reading": 348.0, "cost": 183.47, "remarks": ""}, "53_elec_2025_OCT": {"reading": 528.0, "cost": 152.25, "remarks": ""}, "51_elec_2025_OCT": {"reading": 0.0, "cost": 20.1, "remarks": ""}, "13_elec_2025_OCT": {"reading": 1261.0, "cost": 537.02, "remarks": ""}, "41_elec_2025_OCT": {"reading": 3520.0, "cost": 1656.5, "remarks": ""}, "37_elec_2025_OCT": {"reading": 4039.0, "cost": 2093.6, "remarks": ""}, "40_elec_2025_OCT": {"reading": 2436.0, "cost": 1112.95, "remarks": ""}, "12_elec_2025_OCT": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "11_elec_2025_OCT": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "29_elec_2025_OCT": {"reading": 366.0, "cost": 102.1, "remarks": ""}, "19_elec_2025_OCT": {"reading": 3674.0, "cost": 1674.75, "remarks": ""}, "18_elec_2025_OCT": {"reading": 2242.0, "cost": 994.35, "remarks": ""}, "20_elec_2025_OCT": {"reading": 902.0, "cost": 364.15, "remarks": ""}, "21_elec_2025_OCT": {"reading": 504.0, "cost": 173.9, "remarks": ""}, "22_elec_2025_OCT": {"reading": 636.0, "cost": 209.2, "remarks": ""}, "23_elec_2025_OCT": {"reading": 314.0, "cost": 74.8, "remarks": ""}, "24_elec_2025_OCT": {"reading": 71.0, "cost": 13.8, "remarks": ""}, "25_elec_2025_OCT": {"reading": 241.0, "cost": 48.1, "remarks": ""}, "26_elec_2025_OCT": {"reading": 362.0, "cost": 101.0, "remarks": ""}, "27_elec_2025_OCT": {"reading": 348.0, "cost": 82.9, "remarks": ""}, "2_elec_2025_OCT": {"reading": 1479.0, "cost": 620.35, "remarks": ""}, "32_elec_2025_OCT": {"reading": 120.0, "cost": 61.05, "remarks": ""}, "33_elec_2025_OCT": {"reading": 116.0, "cost": 22.75, "remarks": ""}, "17_elec_2025_OCT": {"reading": 151.0, "cost": 22.55, "remarks": ""}, "30_elec_2025_OCT": {"reading": 963.0, "cost": 464.95, "remarks": ""}, "31_elec_2025_OCT": {"reading": 460.0, "cost": 227.2, "remarks": ""}, "1_elec_2025_OCT": {"reading": 295.0, "cost": 152.65, "remarks": ""}, "10_elec_2025_OCT": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "36_elec_2025_OCT": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "48_elec_2025_NOV": {"reading": 2907.0, "cost": 997.34, "remarks": ""}, "44_elec_2025_NOV": {"reading": 576.0, "cost": 271.9, "remarks": ""}, "43_elec_2025_NOV": {"reading": 518.0, "cost": 144.23, "remarks": ""}, "15_elec_2025_NOV": {"reading": 152.0, "cost": 69.15, "remarks": ""}, "14_elec_2025_NOV": {"reading": 1377.0, "cost": 551.0, "remarks": ""}, "34_elec_2025_NOV": {"reading": 364.0, "cost": 177.47, "remarks": ""}, "53_elec_2025_NOV": {"reading": 511.0, "cost": 142.45, "remarks": ""}, "51_elec_2025_NOV": {"reading": 0.0, "cost": 20.15, "remarks": ""}, "13_elec_2025_NOV": {"reading": 1422.0, "cost": 561.46, "remarks": ""}, "41_elec_2025_NOV": {"reading": 4972.0, "cost": 2178.12, "remarks": ""}, "37_elec_2025_NOV": {"reading": 4216.0, "cost": 2124.51, "remarks": ""}, "40_elec_2025_NOV": {"reading": 2657.0, "cost": 1184.6, "remarks": ""}, "12_elec_2025_NOV": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "11_elec_2025_NOV": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "29_elec_2025_NOV": {"reading": 387.0, "cost": 108.4, "remarks": ""}, "19_elec_2025_NOV": {"reading": 3005.0, "cost": 1307.15, "remarks": ""}, "18_elec_2025_NOV": {"reading": 2154.0, "cost": 920.5699999999999, "remarks": ""}, "20_elec_2025_NOV": {"reading": 870.0, "cost": 326.4, "remarks": ""}, "21_elec_2025_NOV": {"reading": 441.0, "cost": 134.85, "remarks": ""}, "22_elec_2025_NOV": {"reading": 574.0, "cost": 207.75, "remarks": ""}, "23_elec_2025_NOV": {"reading": 289.0, "cost": 63.8, "remarks": ""}, "24_elec_2025_NOV": {"reading": 77.0, "cost": 15.05, "remarks": ""}, "25_elec_2025_NOV": {"reading": 234.0, "cost": 46.95, "remarks": ""}, "26_elec_2025_NOV": {"reading": 324.0, "cost": 77.6, "remarks": ""}, "27_elec_2025_NOV": {"reading": 331.0, "cost": 79.2, "remarks": ""}, "2_elec_2025_NOV": {"reading": 1363.0, "cost": 541.05, "remarks": ""}, "32_elec_2025_NOV": {"reading": 120.0, "cost": 57.75, "remarks": ""}, "33_elec_2025_NOV": {"reading": 116.0, "cost": 22.55, "remarks": ""}, "17_elec_2025_NOV": {"reading": 99.0, "cost": 19.3, "remarks": ""}, "30_elec_2025_NOV": {"reading": 945.0, "cost": 433.55, "remarks": ""}, "31_elec_2025_NOV": {"reading": 443.0, "cost": 208.75, "remarks": ""}, "1_elec_2025_NOV": {"reading": 285.0, "cost": 142.8, "remarks": ""}, "10_elec_2025_NOV": {"reading": 0.0, "cost": 20.05, "remarks": ""}, "36_elec_2025_NOV": {"reading": 0.0, "cost": 20.05, "remarks": ""}, "48_elec_2025_DEC": {"reading": 2938.0, "cost": 1083.29, "remarks": ""}, "44_elec_2025_DEC": {"reading": 477.0, "cost": 231.08, "remarks": ""}, "43_elec_2025_DEC": {"reading": 458.0, "cost": 140.28, "remarks": ""}, "15_elec_2025_DEC": {"reading": 135.0, "cost": 134.35, "remarks": ""}, "14_elec_2025_DEC": {"reading": 1359.0, "cost": 619.2, "remarks": ""}, "34_elec_2025_DEC": {"reading": 247.0, "cost": 129.23, "remarks": ""}, "53_elec_2025_DEC": {"reading": 533.0, "cost": 159.56, "remarks": ""}, "51_elec_2025_DEC": {"reading": 0.0, "cost": 20.18, "remarks": ""}, "13_elec_2025_DEC": {"reading": 1033.0, "cost": 416.88, "remarks": ""}, "41_elec_2025_DEC": {"reading": 7680.0, "cost": 1251.33, "remarks": ""}, "37_elec_2025_DEC": {"reading": 4715.0, "cost": 2489.87, "remarks": ""}, "40_elec_2025_DEC": {"reading": 2447.0, "cost": 1141.85, "remarks": ""}, "12_elec_2025_DEC": {"reading": 0.0, "cost": 20.1, "remarks": ""}, "11_elec_2025_DEC": {"reading": 0.0, "cost": 20.0, "remarks": ""}, "29_elec_2025_DEC": {"reading": 388.0, "cost": 108.15, "remarks": ""}, "19_elec_2025_DEC": {"reading": 2849.0, "cost": 1304.05, "remarks": ""}, "18_elec_2025_DEC": {"reading": 2190.0, "cost": 1326.05, "remarks": ""}, "20_elec_2025_DEC": {"reading": 850.0, "cost": 325.45, "remarks": ""}, "21_elec_2025_DEC": {"reading": 450.0, "cost": 136.85, "remarks": ""}, "22_elec_2025_DEC": {"reading": 617.0, "cost": 203.1, "remarks": ""}, "23_elec_2025_DEC": {"reading": 297.0, "cost": 65.1, "remarks": ""}, "24_elec_2025_DEC": {"reading": 135.0, "cost": 26.25, "remarks": ""}, "25_elec_2025_DEC": {"reading": 283.0, "cost": 62.05, "remarks": ""}, "26_elec_2025_DEC": {"reading": 341.0, "cost": 81.2, "remarks": ""}, "27_elec_2025_DEC": {"reading": 331.0, "cost": 78.8, "remarks": ""}, "2_elec_2025_DEC": {"reading": 1915.0, "cost": 1011.35, "remarks": ""}, "32_elec_2025_DEC": {"reading": 122.0, "cost": 61.35, "remarks": ""}, "33_elec_2025_DEC": {"reading": 123.0, "cost": 23.9, "remarks": ""}, "17_elec_2025_DEC": {"reading": 85.0, "cost": 16.5, "remarks": ""}, "30_elec_2025_DEC": {"reading": 970.0, "cost": 468.35, "remarks": ""}, "31_elec_2025_DEC": {"reading": 440.0, "cost": 218.3, "remarks": ""}, "1_elec_2025_DEC": {"reading": 1180.0, "cost": 163.8, "remarks": ""}, "10_elec_2025_DEC": {"reading": 0.0, "cost": 20.2, "remarks": ""}, "0_elec_2025_DEC": {"reading": 11.0, "cost": 24.75, "remarks": ""}, "36_elec_2025_DEC": {"reading": 0.0, "cost": 20.2, "remarks": ""}, "49_water_2025_JAN": {"reading": null, "cost": 447.3, "remarks": ""}, "49_water_2026_JAN": {"reading": 402.0, "cost": 1528.45, "remarks": ""}, "47_water_2025_JAN": {"reading": null, "cost": 656.05, "remarks": ""}, "47_water_2026_JAN": {"reading": 522.0, "cost": 1988.05, "remarks": ""}, "46_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "46_water_2026_JAN": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "45_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2026_JAN": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "44_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2026_JAN": {"reading": 49.0, "cost": 176.47, "remarks": ""}, "42_water_2025_JAN": {"reading": null, "cost": 67.5, "remarks": ""}, "42_water_2026_JAN": {"reading": 19.0, "cost": 66.7, "remarks": ""}, "16_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "16_water_2026_JAN": {"reading": 1.0, "cost": null, "remarks": ""}, "14_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "14_water_2026_JAN": {"reading": 9.0, "cost": 36.0, "remarks": ""}, "34_water_2025_JAN": {"reading": null, "cost": 194.45, "remarks": ""}, "34_water_2026_JAN": {"reading": 161.0, "cost": 605.45, "remarks": ""}, "52_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "52_water_2026_JAN": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "51_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2026_JAN": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "13_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2026_JAN": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "41_water_2025_JAN": {"reading": null, "cost": 835.4, "remarks": ""}, "41_water_2026_JAN": {"reading": 325.0, "cost": 1514.5, "remarks": ""}, "39_water_2025_JAN": {"reading": null, "cost": 1111.1, "remarks": ""}, "40_water_2025_JAN": {"reading": null, "cost": 1035.4, "remarks": ""}, "40_water_2026_JAN": {"reading": 274.0, "cost": 771.79, "remarks": ""}, "28_water_2025_JAN": {"reading": null, "cost": 74.9, "remarks": ""}, "28_water_2026_JAN": {"reading": 64.0, "cost": 139.1, "remarks": ""}, "19_water_2025_JAN": {"reading": null, "cost": 75.6, "remarks": ""}, "19_water_2026_JAN": {"reading": 22.0, "cost": 77.22, "remarks": ""}, "18_water_2025_JAN": {"reading": null, "cost": 85.69999999999999, "remarks": ""}, "18_water_2026_JAN": {"reading": 118.0, "cost": 337.25, "remarks": ""}, "20_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "20_water_2026_JAN": {"reading": 8.0, "cost": 36.0, "remarks": ""}, "21_water_2025_JAN": {"reading": null, "cost": 677.15, "remarks": ""}, "21_water_2026_JAN": {"reading": 353.0, "cost": 1153.5, "remarks": ""}, "22_water_2025_JAN": {"reading": null, "cost": 75.6, "remarks": ""}, "22_water_2026_JAN": {"reading": 2.0, "cost": 6.5, "remarks": ""}, "23_water_2025_JAN": {"reading": null, "cost": 80.15, "remarks": ""}, "23_water_2026_JAN": {"reading": 50.0, "cost": 89.95, "remarks": ""}, "24_water_2025_JAN": {"reading": null, "cost": 11.7, "remarks": ""}, "24_water_2026_JAN": {"reading": 20.0, "cost": 13.0, "remarks": ""}, "27_water_2025_JAN": {"reading": null, "cost": 479.9, "remarks": ""}, "27_water_2026_JAN": {"reading": 260.0, "cost": 827.05, "remarks": ""}, "2_water_2025_JAN": {"reading": null, "cost": 537.75, "remarks": ""}, "2_water_2026_JAN": {"reading": 269.0, "cost": 858.65, "remarks": ""}, "32_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "32_water_2026_JAN": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "17_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "17_water_2026_JAN": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "30_water_2026_JAN": {"reading": 105.0, "cost": 390.95, "remarks": ""}, "31_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "31_water_2026_JAN": {"reading": 10.0, "cost": 36.0, "remarks": ""}, "8_water_2025_JAN": {"reading": null, "cost": 11.7, "remarks": ""}, "8_water_2026_JAN": {"reading": 29.0, "cost": 27.6, "remarks": ""}, "0_water_2025_JAN": {"reading": null, "cost": 31.5, "remarks": ""}, "35_water_2025_JAN": {"reading": null, "cost": 36.0, "remarks": ""}, "35_water_2026_JAN": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "49_water_2025_FEB": {"reading": null, "cost": 476.7, "remarks": ""}, "49_water_2026_FEB": {"reading": 211.0, "cost": 796.95, "remarks": ""}, "47_water_2025_FEB": {"reading": null, "cost": 735.4, "remarks": ""}, "47_water_2026_FEB": {"reading": 290.0, "cost": 1099.5, "remarks": ""}, "46_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "46_water_2026_FEB": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "45_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2026_FEB": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "44_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2026_FEB": {"reading": 39.0, "cost": 138.16, "remarks": ""}, "42_water_2025_FEB": {"reading": null, "cost": 45.9, "remarks": ""}, "42_water_2026_FEB": {"reading": 31.0, "cost": 108.8, "remarks": ""}, "16_water_2026_FEB": {"reading": 1.0, "cost": 36.0, "remarks": ""}, "14_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "14_water_2026_FEB": {"reading": 8.0, "cost": 36.0, "remarks": ""}, "34_water_2025_FEB": {"reading": null, "cost": 273.85, "remarks": ""}, "34_water_2026_FEB": {"reading": 84.0, "cost": 310.5, "remarks": ""}, "52_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "52_water_2026_FEB": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "51_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2026_FEB": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "13_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2026_FEB": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "41_water_2025_FEB": {"reading": null, "cost": 859.75, "remarks": ""}, "41_water_2026_FEB": {"reading": 341.0, "cost": 1294.85, "remarks": ""}, "38_water_2025_FEB": {"reading": null, "cost": 919.11, "remarks": ""}, "38_water_2026_FEB": {"reading": 445.0, "cost": 1476.4, "remarks": ""}, "40_water_2025_FEB": {"reading": null, "cost": 983.04, "remarks": ""}, "40_water_2026_FEB": {"reading": 315.0, "cost": 891.1, "remarks": ""}, "28_water_2025_FEB": {"reading": null, "cost": 114.35, "remarks": ""}, "28_water_2026_FEB": {"reading": 71.0, "cost": 163.65, "remarks": ""}, "19_water_2025_FEB": {"reading": null, "cost": 48.6, "remarks": ""}, "19_water_2026_FEB": {"reading": 14.0, "cost": 49.14, "remarks": ""}, "18_water_2025_FEB": {"reading": null, "cost": 97.45, "remarks": ""}, "18_water_2026_FEB": {"reading": 81.0, "cost": 201.60000000000002, "remarks": ""}, "20_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "20_water_2026_FEB": {"reading": 3.0, "cost": 36.0, "remarks": ""}, "21_water_2025_FEB": {"reading": null, "cost": 575.95, "remarks": ""}, "21_water_2026_FEB": {"reading": 388.0, "cost": 1276.35, "remarks": ""}, "22_water_2025_FEB": {"reading": null, "cost": 6.5, "remarks": ""}, "22_water_2026_FEB": {"reading": 2.0, "cost": 6.5, "remarks": ""}, "23_water_2025_FEB": {"reading": null, "cost": 51.6, "remarks": ""}, "23_water_2026_FEB": {"reading": 53.0, "cost": 100.5, "remarks": ""}, "24_water_2025_FEB": {"reading": null, "cost": 9.75, "remarks": ""}, "24_water_2026_FEB": {"reading": 31.0, "cost": 30.8, "remarks": ""}, "27_water_2025_FEB": {"reading": null, "cost": 422.4, "remarks": ""}, "27_water_2026_FEB": {"reading": 266.0, "cost": 848.1, "remarks": ""}, "2_water_2025_FEB": {"reading": null, "cost": 482.55, "remarks": ""}, "2_water_2026_FEB": {"reading": 282.0, "cost": 904.25, "remarks": ""}, "32_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "32_water_2026_FEB": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "17_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "17_water_2026_FEB": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "30_water_2026_FEB": {"reading": 102.0, "cost": 379.45, "remarks": ""}, "31_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "31_water_2026_FEB": {"reading": 10.0, "cost": 36.0, "remarks": ""}, "1_water_2025_FEB": {"reading": null, "cost": 12.35, "remarks": ""}, "1_water_2026_FEB": {"reading": 22.0, "cost": 16.25, "remarks": ""}, "0_water_2025_FEB": {"reading": null, "cost": 31.5, "remarks": ""}, "0_water_2026_FEB": {"reading": 1.0, "cost": 41.5, "remarks": ""}, "35_water_2025_FEB": {"reading": null, "cost": 36.0, "remarks": ""}, "35_water_2026_FEB": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "49_water_2025_MAR": {"reading": null, "cost": 362.05, "remarks": ""}, "49_water_2026_MAR": {"reading": 119.0, "cost": 444.55, "remarks": ""}, "47_water_2025_MAR": {"reading": null, "cost": 582.55, "remarks": ""}, "47_water_2026_MAR": {"reading": 186.0, "cost": 701.2, "remarks": ""}, "46_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "46_water_2026_MAR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "45_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2026_MAR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "44_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2026_MAR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "42_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "42_water_2026_MAR": {"reading": 21.0, "cost": 73.7, "remarks": ""}, "16_water_2026_MAR": {"reading": 1.0, "cost": 36.0, "remarks": ""}, "14_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "14_water_2026_MAR": {"reading": 6.0, "cost": 36.0, "remarks": ""}, "34_water_2025_MAR": {"reading": null, "cost": 173.9, "remarks": ""}, "34_water_2026_MAR": {"reading": 94.0, "cost": 348.8, "remarks": ""}, "52_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "52_water_2026_MAR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "51_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2026_MAR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "13_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2026_MAR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "41_water_2025_MAR": {"reading": null, "cost": 1050.0, "remarks": ""}, "41_water_2026_MAR": {"reading": 349.0, "cost": 1325.45, "remarks": ""}, "38_water_2025_MAR": {"reading": null, "cost": 79.5, "remarks": ""}, "40_water_2025_MAR": {"reading": null, "cost": 1291.02, "remarks": ""}, "40_water_2026_MAR": {"reading": 314.0, "cost": 886.73, "remarks": ""}, "28_water_2025_MAR": {"reading": null, "cost": 124.85, "remarks": ""}, "28_water_2026_MAR": {"reading": 79.0, "cost": 191.75, "remarks": ""}, "19_water_2025_MAR": {"reading": null, "cost": 94.5, "remarks": ""}, "19_water_2026_MAR": {"reading": 19.0, "cost": 66.69, "remarks": ""}, "18_water_2025_MAR": {"reading": null, "cost": 92.45, "remarks": ""}, "18_water_2026_MAR": {"reading": 73.0, "cost": 182.7, "remarks": ""}, "20_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "20_water_2026_MAR": {"reading": 3.0, "cost": 36.0, "remarks": ""}, "21_water_2025_MAR": {"reading": null, "cost": 611.4, "remarks": ""}, "21_water_2026_MAR": {"reading": 429.0, "cost": 1420.25, "remarks": ""}, "22_water_2025_MAR": {"reading": null, "cost": 11.05, "remarks": ""}, "22_water_2026_MAR": {"reading": 2.0, "cost": 6.5, "remarks": ""}, "23_water_2025_MAR": {"reading": null, "cost": 109.05, "remarks": ""}, "23_water_2026_MAR": {"reading": 46.0, "cost": 75.9, "remarks": ""}, "24_water_2025_MAR": {"reading": null, "cost": 10.4, "remarks": ""}, "24_water_2026_MAR": {"reading": 22.0, "cost": 16.25, "remarks": ""}, "27_water_2025_MAR": {"reading": null, "cost": 569.3, "remarks": ""}, "27_water_2026_MAR": {"reading": 223.0, "cost": 697.2, "remarks": ""}, "2_water_2025_MAR": {"reading": null, "cost": 819.15, "remarks": ""}, "2_water_2026_MAR": {"reading": 335.0, "cost": 1090.3, "remarks": ""}, "32_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "32_water_2026_MAR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "17_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "17_water_2026_MAR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "30_water_2026_MAR": {"reading": 116.0, "cost": 433.1, "remarks": ""}, "31_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "31_water_2026_MAR": {"reading": 10.0, "cost": 36.0, "remarks": ""}, "1_water_2025_MAR": {"reading": null, "cost": 27.5, "remarks": ""}, "1_water_2026_MAR": {"reading": 43.0, "cost": 65.4, "remarks": ""}, "0_water_2025_MAR": {"reading": null, "cost": 31.5, "remarks": ""}, "0_water_2026_MAR": {"reading": 1.0, "cost": 41.5, "remarks": ""}, "35_water_2025_MAR": {"reading": null, "cost": 36.0, "remarks": ""}, "35_water_2026_MAR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "49_water_2025_APR": {"reading": null, "cost": 61.74, "remarks": ""}, "49_water_2026_APR": {"reading": 142.0, "cost": 532.65, "remarks": ""}, "47_water_2025_APR": {"reading": null, "cost": 194.04, "remarks": ""}, "47_water_2026_APR": {"reading": 232.0, "cost": 877.35, "remarks": ""}, "46_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "46_water_2026_APR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "45_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2026_APR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "44_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2026_APR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "42_water_2025_APR": {"reading": null, "cost": 45.9, "remarks": ""}, "42_water_2026_APR": {"reading": 27.0, "cost": 94.75, "remarks": ""}, "16_water_2026_APR": {"reading": 1.0, "cost": 36.0, "remarks": ""}, "14_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "14_water_2026_APR": {"reading": 9.0, "cost": 36.0, "remarks": ""}, "34_water_2025_APR": {"reading": null, "cost": 94.08, "remarks": ""}, "34_water_2026_APR": {"reading": 96.0, "cost": 356.5, "remarks": ""}, "52_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "52_water_2026_APR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "51_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2026_APR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "13_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2026_APR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "41_water_2025_APR": {"reading": null, "cost": 1067.65, "remarks": ""}, "41_water_2026_APR": {"reading": 264.0, "cost": 999.9, "remarks": ""}, "38_water_2025_APR": {"reading": null, "cost": 145.9, "remarks": ""}, "38_water_2026_APR": {"reading": 457.0, "cost": 1507.1, "remarks": ""}, "40_water_2025_APR": {"reading": null, "cost": 1424.91, "remarks": ""}, "40_water_2026_APR": {"reading": 289.0, "cost": 813.98, "remarks": ""}, "28_water_2025_APR": {"reading": null, "cost": 124.85, "remarks": ""}, "28_water_2026_APR": {"reading": 80.0, "cost": 195.25, "remarks": ""}, "19_water_2025_APR": {"reading": null, "cost": 64.8, "remarks": ""}, "19_water_2026_APR": {"reading": 40.0, "cost": 142.0, "remarks": ""}, "18_water_2025_APR": {"reading": null, "cost": 262.75, "remarks": ""}, "18_water_2026_APR": {"reading": 83.0, "cost": 216.60000000000002, "remarks": ""}, "20_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "20_water_2026_APR": {"reading": 6.0, "cost": 36.0, "remarks": ""}, "21_water_2025_APR": {"reading": null, "cost": 719.25, "remarks": ""}, "21_water_2026_APR": {"reading": 538.0, "cost": 1802.85, "remarks": ""}, "22_water_2025_APR": {"reading": null, "cost": 11.7, "remarks": ""}, "22_water_2026_APR": {"reading": 3.0, "cost": 6.5, "remarks": ""}, "23_water_2025_APR": {"reading": null, "cost": 85.75, "remarks": ""}, "23_water_2026_APR": {"reading": 67.0, "cost": 149.6, "remarks": ""}, "24_water_2025_APR": {"reading": null, "cost": 9.75, "remarks": ""}, "24_water_2026_APR": {"reading": 22.0, "cost": 16.25, "remarks": ""}, "27_water_2025_APR": {"reading": null, "cost": 582.45, "remarks": ""}, "27_water_2026_APR": {"reading": 236.0, "cost": 742.8, "remarks": ""}, "2_water_2025_APR": {"reading": null, "cost": 522.0, "remarks": ""}, "2_water_2026_APR": {"reading": 367.0, "cost": 1202.6, "remarks": ""}, "32_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "32_water_2026_APR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "17_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "17_water_2026_APR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "30_water_2026_APR": {"reading": 89.0, "cost": 329.65, "remarks": ""}, "31_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "31_water_2026_APR": {"reading": 10.0, "cost": 36.0, "remarks": ""}, "1_water_2025_APR": {"reading": null, "cost": 19.6, "remarks": ""}, "1_water_2026_APR": {"reading": 38.0, "cost": 47.85, "remarks": ""}, "6_water_2026_APR": {"reading": 0.0, "cost": 6.5, "remarks": ""}, "0_water_2025_APR": {"reading": null, "cost": 31.5, "remarks": ""}, "0_water_2026_APR": {"reading": 0.0, "cost": 41.5, "remarks": ""}, "35_water_2025_APR": {"reading": null, "cost": 36.0, "remarks": ""}, "35_water_2026_APR": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "49_water_2025_MAY": {"reading": null, "cost": 397.31, "remarks": ""}, "49_water_2026_MAY": {"reading": 125.0, "cost": 467.55, "remarks": ""}, "47_water_2025_MAY": {"reading": null, "cost": 676.61, "remarks": ""}, "47_water_2026_MAY": {"reading": 204.0, "cost": 770.1, "remarks": ""}, "46_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "46_water_2026_MAY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "45_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2026_MAY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "44_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2026_MAY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "42_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "42_water_2026_MAY": {"reading": 31.0, "cost": 108.8, "remarks": ""}, "16_water_2026_MAY": {"reading": 1.0, "cost": 36.0, "remarks": ""}, "14_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "14_water_2026_MAY": {"reading": 10.0, "cost": 36.0, "remarks": ""}, "34_water_2026_MAY": {"reading": 75.0, "cost": 276.05, "remarks": ""}, "52_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "52_water_2026_MAY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "51_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2026_MAY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "13_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2026_MAY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "41_water_2025_MAY": {"reading": null, "cost": 159.2, "remarks": ""}, "41_water_2026_MAY": {"reading": 1014.0, "cost": 1107.15, "remarks": ""}, "38_water_2025_MAY": {"reading": null, "cost": 929.63, "remarks": ""}, "38_water_2026_MAY": {"reading": 298.0, "cost": 963.45, "remarks": ""}, "40_water_2025_MAY": {"reading": null, "cost": 1306.68, "remarks": ""}, "40_water_2026_MAY": {"reading": 310.0, "cost": 875.09, "remarks": ""}, "28_water_2025_MAY": {"reading": null, "cost": 114.35, "remarks": ""}, "28_water_2026_MAY": {"reading": 81.0, "cost": 198.75, "remarks": ""}, "19_water_2025_MAY": {"reading": null, "cost": 94.5, "remarks": ""}, "19_water_2026_MAY": {"reading": 28.0, "cost": 98.28, "remarks": ""}, "18_water_2025_MAY": {"reading": null, "cost": 370.59999999999997, "remarks": ""}, "18_water_2026_MAY": {"reading": 124.0, "cost": 365.70000000000005, "remarks": ""}, "20_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "20_water_2026_MAY": {"reading": 4.0, "cost": 36.0, "remarks": ""}, "21_water_2025_MAY": {"reading": null, "cost": 840.2, "remarks": ""}, "21_water_2026_MAY": {"reading": 338.0, "cost": 1100.85, "remarks": ""}, "22_water_2025_MAY": {"reading": null, "cost": 6.5, "remarks": ""}, "22_water_2026_MAY": {"reading": 5.0, "cost": 6.5, "remarks": ""}, "23_water_2025_MAY": {"reading": null, "cost": 154.15, "remarks": ""}, "23_water_2026_MAY": {"reading": 78.0, "cost": 191.25, "remarks": ""}, "24_water_2025_MAY": {"reading": null, "cost": 11.7, "remarks": ""}, "24_water_2026_MAY": {"reading": 26.0, "cost": 22.7, "remarks": ""}, "27_water_2025_MAY": {"reading": null, "cost": 769.2, "remarks": ""}, "27_water_2026_MAY": {"reading": 304.0, "cost": 981.5, "remarks": ""}, "2_water_2025_MAY": {"reading": null, "cost": 524.6, "remarks": ""}, "2_water_2026_MAY": {"reading": 325.0, "cost": 1055.2, "remarks": ""}, "6_water_2026_MAY": {"reading": 20.0, "cost": 13.0, "remarks": ""}, "32_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "32_water_2026_MAY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "17_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "17_water_2026_MAY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "30_water_2026_MAY": {"reading": 90.0, "cost": 333.5, "remarks": ""}, "31_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "31_water_2026_MAY": {"reading": 11.0, "cost": 38.6, "remarks": ""}, "1_water_2025_MAY": {"reading": null, "cost": 20.9, "remarks": ""}, "1_water_2026_MAY": {"reading": 63.0, "cost": 135.6, "remarks": ""}, "0_water_2025_MAY": {"reading": null, "cost": 31.5, "remarks": ""}, "0_water_2026_MAY": {"reading": 1.0, "cost": 41.5, "remarks": ""}, "35_water_2025_MAY": {"reading": null, "cost": 36.0, "remarks": ""}, "35_water_2026_MAY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "50_water_2026_MAY": {"reading": 2.0, "cost": 41.5, "remarks": ""}, "49_water_2025_JUNE": {"reading": null, "cost": 414.94, "remarks": ""}, "49_water_2026_JUNE": {"reading": 123.0, "cost": 459.9, "remarks": ""}, "47_water_2025_JUNE": {"reading": null, "cost": 685.44, "remarks": ""}, "47_water_2026_JUNE": {"reading": 202.0, "cost": 762.45, "remarks": ""}, "46_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "46_water_2026_JUNE": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "45_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2026_JUNE": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "44_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2026_JUNE": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "42_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "42_water_2026_JUNE": {"reading": 17.0, "cost": 59.65, "remarks": ""}, "16_water_2026_JUNE": {"reading": 1.0, "cost": 36.0, "remarks": ""}, "14_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "14_water_2026_JUNE": {"reading": 7.0, "cost": 36.0, "remarks": ""}, "34_water_2025_JUNE": {"reading": null, "cost": 203.3, "remarks": ""}, "34_water_2026_JUNE": {"reading": 73.0, "cost": 268.4, "remarks": ""}, "52_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "52_water_2026_JUNE": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "51_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2026_JUNE": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "13_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2026_JUNE": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "41_water_2025_JUNE": {"reading": null, "cost": 941.2, "remarks": ""}, "41_water_2026_JUNE": {"reading": 318.0, "cost": 1206.75, "remarks": ""}, "38_water_2025_JUNE": {"reading": null, "cost": 1266.24, "remarks": ""}, "38_water_2026_JUNE": {"reading": 492.0, "cost": 1644.35, "remarks": ""}, "40_water_2025_JUNE": {"reading": null, "cost": 1370.81, "remarks": ""}, "40_water_2026_JUNE": {"reading": 261.0, "cost": 733.96, "remarks": ""}, "28_water_2025_JUNE": {"reading": null, "cost": 77.5, "remarks": ""}, "28_water_2026_JUNE": {"reading": 74.0, "cost": 174.2, "remarks": ""}, "19_water_2025_JUNE": {"reading": null, "cost": 106.26, "remarks": ""}, "19_water_2026_JUNE": {"reading": 54.0, "cost": 195.62, "remarks": ""}, "18_water_2025_JUNE": {"reading": null, "cost": 79.0, "remarks": ""}, "18_water_2026_JUNE": {"reading": 107.0, "cost": 330.6, "remarks": ""}, "20_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "20_water_2026_JUNE": {"reading": 5.0, "cost": 36.0, "remarks": ""}, "21_water_2025_JUNE": {"reading": null, "cost": 608.75, "remarks": ""}, "21_water_2026_JUNE": {"reading": 280.0, "cost": 897.25, "remarks": ""}, "22_water_2025_JUNE": {"reading": null, "cost": 6.5, "remarks": ""}, "22_water_2026_JUNE": {"reading": 4.0, "cost": 6.5, "remarks": ""}, "23_water_2025_JUNE": {"reading": null, "cost": 59.1, "remarks": ""}, "23_water_2026_JUNE": {"reading": 74.0, "cost": 174.2, "remarks": ""}, "24_water_2025_JUNE": {"reading": null, "cost": 9.1, "remarks": ""}, "24_water_2026_JUNE": {"reading": 21.0, "cost": 14.6, "remarks": ""}, "27_water_2025_JUNE": {"reading": null, "cost": 506.2, "remarks": ""}, "27_water_2026_JUNE": {"reading": 274.0, "cost": 876.2, "remarks": ""}, "2_water_2025_JUNE": {"reading": null, "cost": 448.35, "remarks": ""}, "2_water_2026_JUNE": {"reading": 347.0, "cost": 1132.4, "remarks": ""}, "4_water_2026_JUNE": {"reading": 48.0, "cost": 69.95, "remarks": ""}, "7_water_2026_JUNE": {"reading": 15.0, "cost": 9.75, "remarks": ""}, "32_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "32_water_2026_JUNE": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "17_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "17_water_2026_JUNE": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "30_water_2026_JUNE": {"reading": 79.0, "cost": 291.35, "remarks": ""}, "31_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "31_water_2026_JUNE": {"reading": 11.0, "cost": 38.6, "remarks": ""}, "1_water_2025_JUNE": {"reading": null, "cost": 31.5, "remarks": ""}, "1_water_2026_JUNE": {"reading": 45.0, "cost": 72.4, "remarks": ""}, "0_water_2026_JUNE": {"reading": 1.0, "cost": 41.5, "remarks": ""}, "35_water_2025_JUNE": {"reading": null, "cost": 36.0, "remarks": ""}, "35_water_2026_JUNE": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "49_water_2025_JULY": {"reading": null, "cost": 447.29, "remarks": ""}, "49_water_2026_JULY": {"reading": 153.0, "cost": 574.8, "remarks": ""}, "47_water_2025_JULY": {"reading": null, "cost": 776.6, "remarks": ""}, "47_water_2026_JULY": {"reading": 241.0, "cost": 911.85, "remarks": ""}, "46_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "46_water_2026_JULY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "45_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2026_JULY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "44_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2026_JULY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "42_water_2025_JULY": {"reading": null, "cost": 67.5, "remarks": ""}, "42_water_2026_JULY": {"reading": 20.0, "cost": 70.2, "remarks": ""}, "16_water_2026_JULY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "14_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "14_water_2026_JULY": {"reading": 6.0, "cost": 36.0, "remarks": ""}, "34_water_2025_JULY": {"reading": null, "cost": 215.05, "remarks": ""}, "34_water_2026_JULY": {"reading": 104.0, "cost": 387.1, "remarks": ""}, "52_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "52_water_2026_JULY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "51_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2026_JULY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "13_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2026_JULY": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "41_water_2025_JULY": {"reading": null, "cost": 1000.0, "remarks": ""}, "38_water_2025_JULY": {"reading": null, "cost": 1224.2, "remarks": ""}, "38_water_2026_JULY": {"reading": 461.0, "cost": 1532.55, "remarks": ""}, "40_water_2025_JULY": {"reading": null, "cost": 1345.72, "remarks": ""}, "28_water_2025_JULY": {"reading": null, "cost": 82.75, "remarks": ""}, "19_water_2025_JULY": {"reading": null, "cost": 126.84, "remarks": ""}, "18_water_2025_JULY": {"reading": null, "cost": 184.10000000000002, "remarks": ""}, "20_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "21_water_2025_JULY": {"reading": null, "cost": 737.65, "remarks": ""}, "22_water_2025_JULY": {"reading": null, "cost": 6.5, "remarks": ""}, "23_water_2025_JULY": {"reading": null, "cost": 67.35, "remarks": ""}, "24_water_2025_JULY": {"reading": null, "cost": 8.45, "remarks": ""}, "27_water_2025_JULY": {"reading": null, "cost": 466.75, "remarks": ""}, "2_water_2025_JULY": {"reading": null, "cost": 545.65, "remarks": ""}, "32_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "17_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "31_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "1_water_2025_JULY": {"reading": null, "cost": 40.7, "remarks": ""}, "35_water_2025_JULY": {"reading": null, "cost": 36.0, "remarks": ""}, "35_water_2026_JULY": {"reading": 27.0, "cost": 94.75, "remarks": ""}, "49_water_2025_AUG": {"reading": null, "cost": 455.2, "remarks": ""}, "47_water_2025_AUG": {"reading": null, "cost": 794.8, "remarks": ""}, "46_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2025_AUG": {"reading": null, "cost": 180.3, "remarks": ""}, "42_water_2025_AUG": {"reading": null, "cost": 97.45, "remarks": ""}, "14_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "34_water_2025_AUG": {"reading": null, "cost": 258.15, "remarks": ""}, "52_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "41_water_2025_AUG": {"reading": null, "cost": 1020.6, "remarks": ""}, "38_water_2025_AUG": {"reading": null, "cost": 1132.15, "remarks": ""}, "40_water_2025_AUG": {"reading": null, "cost": 964.0, "remarks": ""}, "28_water_2025_AUG": {"reading": null, "cost": 80.65, "remarks": ""}, "19_water_2025_AUG": {"reading": null, "cost": 113.48, "remarks": ""}, "18_water_2025_AUG": {"reading": null, "cost": 178.0, "remarks": ""}, "20_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "21_water_2025_AUG": {"reading": null, "cost": 916.15, "remarks": ""}, "22_water_2025_AUG": {"reading": null, "cost": 6.5, "remarks": ""}, "23_water_2025_AUG": {"reading": null, "cost": 109.95, "remarks": ""}, "24_water_2025_AUG": {"reading": null, "cost": 11.7, "remarks": ""}, "27_water_2025_AUG": {"reading": null, "cost": 710.7, "remarks": ""}, "2_water_2025_AUG": {"reading": null, "cost": 624.6, "remarks": ""}, "32_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "17_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "31_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "1_water_2025_AUG": {"reading": null, "cost": 21.9, "remarks": ""}, "35_water_2025_AUG": {"reading": null, "cost": 36.0, "remarks": ""}, "49_water_2025_SEPT": {"reading": null, "cost": 670.55, "remarks": ""}, "47_water_2025_SEPT": {"reading": null, "cost": 1126.3, "remarks": ""}, "46_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2025_SEPT": {"reading": null, "cost": 195.6, "remarks": ""}, "42_water_2025_SEPT": {"reading": null, "cost": 174.65, "remarks": ""}, "14_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "34_water_2025_SEPT": {"reading": null, "cost": 448.4, "remarks": ""}, "52_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "41_water_2025_SEPT": {"reading": null, "cost": 1036.6, "remarks": ""}, "38_water_2025_SEPT": {"reading": null, "cost": 1404.35, "remarks": ""}, "40_water_2025_SEPT": {"reading": null, "cost": 687.49, "remarks": ""}, "28_water_2025_SEPT": {"reading": null, "cost": 121.55, "remarks": ""}, "19_water_2025_SEPT": {"reading": null, "cost": 73.7, "remarks": ""}, "18_water_2025_SEPT": {"reading": null, "cost": 197.54999999999998, "remarks": ""}, "20_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "21_water_2025_SEPT": {"reading": null, "cost": 1058.7, "remarks": ""}, "22_water_2025_SEPT": {"reading": null, "cost": 6.5, "remarks": ""}, "23_water_2025_SEPT": {"reading": null, "cost": 100.5, "remarks": ""}, "24_water_2025_SEPT": {"reading": null, "cost": 9.75, "remarks": ""}, "27_water_2025_SEPT": {"reading": null, "cost": 718.25, "remarks": ""}, "2_water_2025_SEPT": {"reading": null, "cost": 862.15, "remarks": ""}, "32_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "17_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "31_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "1_water_2025_SEPT": {"reading": null, "cost": 96.95, "remarks": ""}, "35_water_2025_SEPT": {"reading": null, "cost": 36.0, "remarks": ""}, "49_water_2025_OCT": {"reading": null, "cost": 965.45, "remarks": ""}, "47_water_2025_OCT": {"reading": null, "cost": 1643.35, "remarks": ""}, "46_water_2025_OCT": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2025_OCT": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2025_OCT": {"reading": null, "cost": 180.3, "remarks": ""}, "42_water_2025_OCT": {"reading": null, "cost": 63.2, "remarks": ""}, "14_water_2025_OCT": {"reading": null, "cost": 36.0, "remarks": ""}, "34_water_2025_OCT": {"reading": null, "cost": 413.95, "remarks": ""}, "52_water_2025_OCT": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2025_OCT": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2025_OCT": {"reading": null, "cost": 36.0, "remarks": ""}, "41_water_2025_OCT": {"reading": null, "cost": 1413.55, "remarks": ""}, "38_water_2025_OCT": {"reading": null, "cost": 1448.3, "remarks": ""}, "40_water_2025_OCT": {"reading": null, "cost": 739.85, "remarks": ""}, "28_water_2025_OCT": {"reading": null, "cost": 111.0, "remarks": ""}, "18_water_2025_OCT": {"reading": null, "cost": 198.75, "remarks": ""}, "20_water_2025_OCT": {"reading": null, "cost": 36.0, "remarks": ""}, "21_water_2025_OCT": {"reading": null, "cost": 1072.75, "remarks": ""}, "22_water_2025_OCT": {"reading": null, "cost": 6.5, "remarks": ""}, "23_water_2025_OCT": {"reading": null, "cost": 6.5, "remarks": ""}, "24_water_2025_OCT": {"reading": null, "cost": 10.4, "remarks": ""}, "27_water_2025_OCT": {"reading": null, "cost": 690.15, "remarks": ""}, "2_water_2025_OCT": {"reading": null, "cost": 711.2, "remarks": ""}, "32_water_2025_OCT": {"reading": null, "cost": 36.0, "remarks": ""}, "17_water_2025_OCT": {"reading": null, "cost": 36.0, "remarks": ""}, "1_water_2025_OCT": {"reading": null, "cost": 58.35, "remarks": ""}, "35_water_2025_NOV": {"reading": null, "cost": 72.0, "remarks": ""}, "49_water_2025_NOV": {"reading": null, "cost": 1130.15, "remarks": ""}, "47_water_2025_NOV": {"reading": null, "cost": 1911.45, "remarks": ""}, "46_water_2025_NOV": {"reading": null, "cost": 36.0, "remarks": ""}, "45_water_2025_NOV": {"reading": null, "cost": 36.0, "remarks": ""}, "44_water_2025_NOV": {"reading": null, "cost": 195.62, "remarks": ""}, "42_water_2025_NOV": {"reading": null, "cost": 70.2, "remarks": ""}, "14_water_2025_NOV": {"reading": null, "cost": 36.0, "remarks": ""}, "34_water_2025_NOV": {"reading": null, "cost": 624.6, "remarks": ""}, "52_water_2025_NOV": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2025_NOV": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2025_NOV": {"reading": null, "cost": 36.0, "remarks": ""}, "41_water_2025_NOV": {"reading": null, "cost": 1210.55, "remarks": ""}, "38_water_2025_NOV": {"reading": null, "cost": 1497.45, "remarks": ""}, "40_water_2025_NOV": {"reading": null, "cost": 843.08, "remarks": ""}, "17_water_2025_NOV": {"reading": null, "cost": 36.0, "remarks": ""}, "49_water_2025_DEC": {"reading": 355.0, "cost": 1348.45, "remarks": ""}, "47_water_2025_DEC": {"reading": 581.0, "cost": 2214.05, "remarks": ""}, "46_water_2025_DEC": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "45_water_2025_DEC": {"reading": 0.0, "cost": 36.0, "remarks": ""}, "44_water_2025_DEC": {"reading": 54.0, "cost": 36.0, "remarks": ""}, "42_water_2025_DEC": {"reading": 14.0, "cost": 49.15, "remarks": ""}, "14_water_2025_DEC": {"reading": null, "cost": 36.0, "remarks": ""}, "34_water_2025_DEC": {"reading": 89.0, "cost": 329.65, "remarks": ""}, "52_water_2025_DEC": {"reading": null, "cost": 36.0, "remarks": ""}, "51_water_2025_DEC": {"reading": null, "cost": 36.0, "remarks": ""}, "13_water_2025_DEC": {"reading": null, "cost": 36.0, "remarks": ""}, "41_water_2025_DEC": {"reading": null, "cost": 1088.0, "remarks": ""}, "38_water_2025_DEC": {"reading": null, "cost": 1676.45, "remarks": ""}, "40_water_2025_DEC": {"reading": 264.0, "cost": 742.69, "remarks": ""}, "17_water_2025_DEC": {"reading": null, "cost": 36.0, "remarks": ""}, "35_water_2025_DEC": {"reading": null, "cost": 36.0, "remarks": ""}}};
+const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUNE','JULY','AUG','SEPT','OCT','NOV','DEC'];
+const MONTHS_LABEL = {JAN:'Januari',FEB:'Februari',MAR:'Mac',APR:'April',MAY:'Mei',JUNE:'Jun',JULY:'Julai',AUG:'Ogos',SEPT:'September',OCT:'Oktober',NOV:'November',DEC:'Disember'};
+const MONTHS_LABEL_EN = {JAN:'January',FEB:'February',MAR:'March',APR:'April',MAY:'May',JUNE:'June',JULY:'July',AUG:'August',SEPT:'September',OCT:'October',NOV:'November',DEC:'December'};
+
+// ---------- i18n ----------
+let LANG = 'ms';
+const I18N = {
+  ms: {
+    brand_title: 'Rekod Bil TNB & Air',
+    shared_note: '🔗 Storan dikongsi — semua pengguna app ini nampak & boleh kemaskini rekod yang sama',
+    status_loading: 'Memuatkan...',
+    status_line: '{n} lokasi · {m} rekod tersimpan',
+    btn_template: '📄 Templat Excel',
+    btn_import: '⭱ Import Excel',
+    btn_export: '⭳ Eksport JSON',
+    btn_export_excel: '⭳ Eksport Excel',
+    form_title: '➕ Tambah / Kemaskini Rekod',
+    label_location: 'Lokasi (Property)',
+    ph_location: 'Cari lokasi, No. Akaun TNB / Air, atau taip alamat baru...',
+    prop_suggest_empty: 'Tiada lokasi/akaun sepadan — taip penuh untuk cipta lokasi baru.',
+    new_prop_note: 'Property baru — sila lengkapkan maklumat berikut:',
+    label_company: 'Syarikat',
+    label_branch: 'Cawangan',
+    label_usage: 'Kegunaan',
+    label_tnb_acc: 'No. Akaun TNB',
+    label_tariff: 'Tarif TNB',
+    ph_tariff: 'cth: B : Perdagangan',
+    label_water_acc: 'No. Akaun Air',
+    label_provider: 'Pembekal Air',
+    ph_provider: 'cth: SYABAS',
+    label_billing_period: 'Tempoh Bil',
+    ph_billing_period: 'cth: 1st - 31st',
+    label_utility_type: 'Jenis Utiliti',
+    opt_elec: '⚡ Elektrik',
+    opt_water: '💧 Air',
+    opt_elec_plain: 'Elektrik',
+    opt_water_plain: 'Air',
+    label_year: 'Tahun',
+    label_month: 'Bulan',
+    label_reading_kwh: 'Bacaan (kWh)',
+    label_reading_m3: 'Bacaan (m³)',
+    ph_reading: 'cth: 1234',
+    label_cost: 'Kos (RM)',
+    ph_cost: 'cth: 456.78',
+    label_remarks: 'Catatan (pilihan)',
+    ph_remarks: 'cth: bacaan anggaran, meter rosak, dll',
+    btn_save: 'Simpan Rekod',
+    btn_update: 'Kemaskini Rekod',
+    btn_reset: 'Reset',
+    msg_saved: '✓ Rekod disimpan',
+    msg_updated: '✓ Rekod dikemaskini',
+    compare_last_year: 'Tahun lepas ({year} {month}):',
+    compare_cost_change: 'Perubahan kos:',
+    tab_records: '📋 Rekod',
+    tab_dashboard: '📊 Dashboard',
+    records_title: '📋 Rekod Tersimpan',
+    ph_search_location: 'Cari lokasi...',
+    opt_all_types: 'Semua Jenis',
+    opt_all_years: 'Semua Tahun',
+    opt_all_branches: 'Semua Cawangan',
+    th_location: 'Lokasi', th_type: 'Jenis', th_company: 'Syarikat', th_branch: 'Cawangan',
+    th_usage: 'Kegunaan', th_account: 'No. Akaun', th_month: 'Bulan', th_year: 'Tahun',
+    th_reading: 'Bacaan', th_reading_ly: 'Bacaan Thn Lepas', th_cost: 'Kos (RM)', th_cost_ly: 'Kos Thn Lepas',
+    th_pct_cost: '% Kos', th_remarks: 'Catatan',
+    empty_note_search: 'Tiada rekod sepadan carian.',
+    empty_note_dash: 'Tiada rekod untuk dipaparkan.',
+    empty_note_ranking: 'Tiada data.',
+    title_edit: 'Edit', title_delete: 'Padam', confirm_delete: 'Padam rekod ini?',
+    dash_overview: 'Gambaran Keseluruhan',
+    card_elec_cost: '⚡ Kos Elektrik {year} (YTD)',
+    card_water_cost: '💧 Kos Air {year} (YTD)',
+    card_elec_kwh: '⚡ Jumlah kWh {year}',
+    card_water_m3: '💧 Jumlah Air {year}',
+    card_locations: '{n} lokasi',
+    delta_vs: 'vs {year} ({val})',
+    trend_title: 'Trend Kos Bulanan',
+    top_elec_title: '⚡ Top Kos Elektrik ({year})',
+    top_water_title: '💧 Top Kos Air ({year})',
+    branch_breakdown_title: 'Pecahan Kos Mengikut Cawangan ({year})',
+    legend_year: '{type} {year}',
+    import_result_title: '📥 Keputusan Import',
+    import_stat_rows: 'Baris Data',
+    import_stat_success: 'Berjaya',
+    import_stat_newloc: 'Lokasi Baru',
+    import_no_errors: 'Semua baris berjaya diproses tanpa ralat.',
+    import_more_errors: '...dan {n} lagi.',
+    btn_ok: 'OK',
+    err_missing_columns: 'Lajur wajib tidak dijumpai. Pastikan fail ada lajur: Lokasi, Tahun, Bulan, Kos. Muat turun templat untuk format yang betul.',
+    err_empty_file: 'Fail kosong atau tiada baris data.',
+    err_read_fail: 'Gagal baca fail: {msg}',
+    err_invalid_year: 'Baris {row}: tahun tidak sah.',
+    err_invalid_month: 'Baris {row}: bulan "{val}" tidak dikenali.',
+    err_invalid_cost: 'Baris {row}: kos tidak sah atau kosong.',
+    lang_toggle: 'EN',
+  },
+  en: {
+    brand_title: 'TNB & Water Bill Records',
+    shared_note: '🔗 Shared storage — every user of this app sees & can update the same records',
+    status_loading: 'Loading...',
+    status_line: '{n} locations · {m} records saved',
+    btn_template: '📄 Excel Template',
+    btn_import: '⭱ Import Excel',
+    btn_export: '⭳ Export JSON',
+    btn_export_excel: '⭳ Export Excel',
+    form_title: '➕ Add / Update Record',
+    label_location: 'Location (Property)',
+    ph_location: 'Search location, TNB / Water account no., or type new address...',
+    prop_suggest_empty: 'No matching location/account — type in full to create a new location.',
+    new_prop_note: 'New property — please complete the following details:',
+    label_company: 'Company',
+    label_branch: 'Branch',
+    label_usage: 'Usage',
+    label_tnb_acc: 'TNB Account No.',
+    label_tariff: 'TNB Tariff',
+    ph_tariff: 'e.g: B : Commercial',
+    label_water_acc: 'Water Account No.',
+    label_provider: 'Water Provider',
+    ph_provider: 'e.g: SYABAS',
+    label_billing_period: 'Billing Period',
+    ph_billing_period: 'e.g: 1st - 31st',
+    label_utility_type: 'Utility Type',
+    opt_elec: '⚡ Electric',
+    opt_water: '💧 Water',
+    opt_elec_plain: 'Electric',
+    opt_water_plain: 'Water',
+    label_year: 'Year',
+    label_month: 'Month',
+    label_reading_kwh: 'Reading (kWh)',
+    label_reading_m3: 'Reading (m³)',
+    ph_reading: 'e.g: 1234',
+    label_cost: 'Cost (RM)',
+    ph_cost: 'e.g: 456.78',
+    label_remarks: 'Remarks (optional)',
+    ph_remarks: 'e.g: estimated reading, faulty meter, etc.',
+    btn_save: 'Save Record',
+    btn_update: 'Update Record',
+    btn_reset: 'Reset',
+    msg_saved: '✓ Record saved',
+    msg_updated: '✓ Record updated',
+    compare_last_year: 'Last year ({year} {month}):',
+    compare_cost_change: 'Cost change:',
+    tab_records: '📋 Records',
+    tab_dashboard: '📊 Dashboard',
+    records_title: '📋 Saved Records',
+    ph_search_location: 'Search location...',
+    opt_all_types: 'All Types',
+    opt_all_years: 'All Years',
+    opt_all_branches: 'All Branches',
+    th_location: 'Location', th_type: 'Type', th_company: 'Company', th_branch: 'Branch',
+    th_usage: 'Usage', th_account: 'Account No.', th_month: 'Month', th_year: 'Year',
+    th_reading: 'Reading', th_reading_ly: 'Reading Last Year', th_cost: 'Cost (RM)', th_cost_ly: 'Cost Last Year',
+    th_pct_cost: '% Cost', th_remarks: 'Remarks',
+    empty_note_search: 'No records match your search.',
+    empty_note_dash: 'No records to display.',
+    empty_note_ranking: 'No data.',
+    title_edit: 'Edit', title_delete: 'Delete', confirm_delete: 'Delete this record?',
+    dash_overview: 'Overview',
+    card_elec_cost: '⚡ Electricity Cost {year} (YTD)',
+    card_water_cost: '💧 Water Cost {year} (YTD)',
+    card_elec_kwh: '⚡ Total kWh {year}',
+    card_water_m3: '💧 Total Water {year}',
+    card_locations: '{n} locations',
+    delta_vs: 'vs {year} ({val})',
+    trend_title: 'Monthly Cost Trend',
+    top_elec_title: '⚡ Top Electricity Cost ({year})',
+    top_water_title: '💧 Top Water Cost ({year})',
+    branch_breakdown_title: 'Cost Breakdown by Branch ({year})',
+    legend_year: '{type} {year}',
+    import_result_title: '📥 Import Result',
+    import_stat_rows: 'Data Rows',
+    import_stat_success: 'Successful',
+    import_stat_newloc: 'New Locations',
+    import_no_errors: 'All rows processed successfully with no errors.',
+    import_more_errors: '...and {n} more.',
+    btn_ok: 'OK',
+    err_missing_columns: 'Required columns not found. Make sure the file has columns: Location, Year, Month, Cost. Download the template for the correct format.',
+    err_empty_file: 'File is empty or has no data rows.',
+    err_read_fail: 'Failed to read file: {msg}',
+    err_invalid_year: 'Row {row}: invalid year.',
+    err_invalid_month: 'Row {row}: month "{val}" not recognized.',
+    err_invalid_cost: 'Row {row}: invalid or empty cost.',
+    lang_toggle: 'BM',
+  },
+};
+
+function t(key, vars){
+  let s = (I18N[LANG] && I18N[LANG][key]!==undefined) ? I18N[LANG][key] : (I18N.ms[key]!==undefined ? I18N.ms[key] : key);
+  if(vars){ Object.keys(vars).forEach(k=>{ s = s.replace(new RegExp('\\{'+k+'\\}','g'), vars[k]); }); }
+  return s;
+}
+
+function monthLabel(code){
+  return LANG==='en' ? MONTHS_LABEL_EN[code] : MONTHS_LABEL[code];
+}
+
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = t(el.getAttribute('data-i18n-ph')); });
+  document.getElementById('langBtn').textContent = '🌐 ' + t('lang_toggle');
+}
+
+async function setLang(lang){
+  LANG = lang;
+  try{ await window.storage.set('ui-lang', lang, false); }catch(e){}
+  applyStaticI18n();
+  populateMonthSelect();
+  populateFilterYears();
+  populateFilterTypeOptions();
+  updateReadingLabel();
+  if(editingKey===null) resetForm(true);
+  document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
+  renderTable();
+  if(document.getElementById('dashboardView').style.display!=='none') renderDashboard();
+}
+
+// ---------- utils ----------
+function fmtRM(n){ if(n===null||n===undefined||isNaN(n)) return '—'; return 'RM '+n.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtNum(n){ if(n===null||n===undefined||isNaN(n)) return '—'; return n.toLocaleString('en-MY',{maximumFractionDigits:2}); }
+function pctDelta(a,b){ if(a===null||a===undefined||b===null||b===undefined||a===0) return null; return (b-a)/a*100; }
+function deltaClass(p){ if(p===null) return 'neu'; if(p>0.5) return 'pos'; if(p<-0.5) return 'neg'; return 'neu'; }
+function deltaArrow(p){ if(p===null) return '—'; if(p>0.5) return '▲ '+p.toFixed(1)+'%'; if(p<-0.5) return '▼ '+Math.abs(p).toFixed(1)+'%'; return '◆ 0.0%'; }
+function esc(s){ return (s===undefined||s===null)?'':String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function slugMatch(a,b){ return a.trim().toLowerCase()===b.trim().toLowerCase(); }
+
+// ---------- state ----------
+let DATA = null; // { properties: [...], records: {...} }
+let editingKey = null; // when set, save() overwrites this record key instead of computing a new one
+
+const STORAGE_KEY = 'app-data';
+
+async function loadData(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, true);
+    DATA = JSON.parse(res.value);
+  }catch(e){
+    // not found -> seed
+    DATA = JSON.parse(JSON.stringify(SEED_DATA));
+    await persist();
+  }
+}
+
+async function persist(){
+  await window.storage.set(STORAGE_KEY, JSON.stringify(DATA), true);
+}
+
+function nextPropId(){
+  return DATA.properties.length ? Math.max(...DATA.properties.map(p=>p.id))+1 : 0;
+}
+
+function findPropertyByAddress(addr){
+  return DATA.properties.find(p=>slugMatch(p.address, addr));
+}
+
+// ---------- form population ----------
+function populateMonthSelect(){
+  const sel = document.getElementById('monthInput');
+  const cur = sel.value;
+  sel.innerHTML = MONTHS.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
+  if(cur) sel.value = cur;
+}
+
+function propMatches(p, q){
+  const hay = [p.address, p.company, p.branch, p.usage, p.tnbAccount, p.waterAccount].map(x=>String(x||'').toLowerCase());
+  return hay.some(h=>h.includes(q));
+}
+
+function highlightMatch(text, q){
+  const s = String(text||'');
+  const i = s.toLowerCase().indexOf(q);
+  if(i<0) return esc(s);
+  return esc(s.slice(0,i)) + '<b>' + esc(s.slice(i,i+q.length)) + '</b>' + esc(s.slice(i+q.length));
+}
+
+function renderPropSuggest(query){
+  const box = document.getElementById('propSuggest');
+  const q = query.trim().toLowerCase();
+  if(!q){ box.style.display='none'; box.innerHTML=''; return; }
+  const matches = DATA.properties.filter(p=>propMatches(p,q)).slice(0,8);
+  if(!matches.length){
+    box.innerHTML = '<div class="prop-suggest-empty">Tiada lokasi/akaun sepadan &mdash; taip penuh untuk cipta lokasi baru.</div>'.replace('&mdash;','—');
+    box.style.display = 'block';
+    return;
+  }
+  box.innerHTML = matches.map(p=>{
+    const bits = [];
+    if(p.tnbAccount) bits.push(`TNB: ${highlightMatch(p.tnbAccount, q)}`);
+    if(p.waterAccount) bits.push(`Air: ${highlightMatch(p.waterAccount, q)}`);
+    const meta = [p.company, bits.join(' &middot; ')].filter(Boolean).join(' &middot; ').replace(/&middot;/g,'·');
+    return `<div class="prop-suggest-item" data-id="${p.id}">
+      <div class="prop-suggest-addr">${highlightMatch(p.address, q)}</div>
+      <div class="prop-suggest-meta">${meta || '&nbsp;'}</div>
+    </div>`;
+  }).join('');
+  box.style.display = 'block';
+}
+
+function hidePropSuggest(){
+  const box = document.getElementById('propSuggest');
+  box.style.display = 'none';
+  box.innerHTML = '';
+}
+
+function selectProperty(id){
+  const prop = DATA.properties.find(p=>p.id===id);
+  if(!prop) return;
+  document.getElementById('propInput').value = prop.address;
+  hidePropSuggest();
+  onPropInputChange();
+}
+
+function onPropInputChange(){
+  const val = document.getElementById('propInput').value;
+  const match = findPropertyByAddress(val);
+  const newBox = document.getElementById('newPropFields');
+  const infoBox = document.getElementById('existingPropInfo');
+  newBox.style.display = (val.trim() && !match) ? 'block' : 'none';
+  if(match){
+    infoBox.innerHTML = `
+      <div class="row"><span class="k">${t('label_company')}</span><span class="v">${esc(match.company||'—')}</span></div>
+      <div class="row"><span class="k">${t('label_branch')}</span><span class="v">${esc(match.branch||'—')}</span></div>
+      <div class="row"><span class="k">${t('label_usage')}</span><span class="v">${esc(match.usage||'—')}</span></div>
+      <div class="row"><span class="k">${t('label_tnb_acc')}</span><span class="v">${esc(match.tnbAccount||'—')}</span></div>
+      <div class="row"><span class="k">${t('label_water_acc')}</span><span class="v">${esc(match.waterAccount||'—')}</span></div>
+    `;
+    infoBox.style.display = 'block';
+  } else {
+    infoBox.style.display = 'none';
+  }
+  updateReadingLabel();
+  updateCompareBox();
+}
+
+function currentType(){
+  return document.querySelector('.toggle-opt.active').getAttribute('data-val');
+}
+
+function updateReadingLabel(){
+  const ty = currentType();
+  document.getElementById('readingLabel').textContent = ty==='elec' ? t('label_reading_kwh') : t('label_reading_m3');
+}
+
+// ---------- compare preview ----------
+function updateCompareBox(){
+  const box = document.getElementById('compareBox');
+  const addr = document.getElementById('propInput').value.trim();
+  const prop = findPropertyByAddress(addr);
+  if(!prop){ box.style.display='none'; return; }
+  const type = currentType();
+  const year = parseInt(document.getElementById('yearInput').value);
+  const month = document.getElementById('monthInput').value;
+  const prevKey = `${prop.id}_${type}_${year-1}_${month}`;
+  const prevRec = DATA.records[prevKey];
+  if(!prevRec){ box.style.display='none'; return; }
+  const reading = parseFloat(document.getElementById('readingInput').value);
+  const cost = parseFloat(document.getElementById('costInput').value);
+  let html = `<b>${t('compare_last_year', {year: year-1, month: monthLabel(month)})}</b> `;
+  html += `${fmtNum(prevRec.reading)} ${type==='elec'?'kWh':'m³'} &middot; ${fmtRM(prevRec.cost)}<br/>`;
+  if(!isNaN(cost)){
+    const cd = pctDelta(prevRec.cost, cost);
+    html += `<b>${t('compare_cost_change')}</b> <span class="${cd>0?'up':'down'}">${deltaArrow(cd)}</span>`;
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+// ---------- save ----------
+async function handleSubmit(e){
+  e.preventDefault();
+  const addr = document.getElementById('propInput').value.trim();
+  if(!addr){ return; }
+  let prop = findPropertyByAddress(addr);
+  if(!prop){
+    prop = {
+      id: nextPropId(),
+      address: addr,
+      company: document.getElementById('npCompany').value.trim(),
+      branch: document.getElementById('npBranch').value.trim(),
+      usage: document.getElementById('npUsage').value.trim(),
+      tariff: document.getElementById('npTariff').value.trim(),
+      provider: document.getElementById('npProvider').value.trim() || 'SYABAS',
+      billingPeriod: document.getElementById('npBillingPeriod').value.trim(),
+      tnbAccount: document.getElementById('npTnbAcc').value.trim(),
+      waterAccount: document.getElementById('npWaterAcc').value.trim(),
+    };
+    DATA.properties.push(prop);
+  }
+
+  const type = currentType();
+  const year = parseInt(document.getElementById('yearInput').value);
+  const month = document.getElementById('monthInput').value;
+  const readingRaw = document.getElementById('readingInput').value;
+  const costRaw = document.getElementById('costInput').value;
+  const remarks = document.getElementById('remarksInput').value.trim();
+
+  const key = editingKey || `${prop.id}_${type}_${year}_${month}`;
+  DATA.records[key] = {
+    reading: readingRaw==='' ? null : parseFloat(readingRaw),
+    cost: costRaw==='' ? null : parseFloat(costRaw),
+    remarks: remarks,
+  };
+
+  await persist();
+  populateFilterYears();
+  renderTable();
+
+  const msg = document.getElementById('saveMsg');
+  msg.style.color = 'var(--down)';
+  msg.textContent = editingKey ? t('msg_updated') : t('msg_saved');
+  setTimeout(()=>{ msg.textContent=''; }, 2500);
+
+  resetForm(true);
+}
+
+function resetForm(keepMsg){
+  editingKey = null;
+  document.getElementById('recordForm').reset();
+  document.getElementById('yearInput').value = 2026;
+  document.getElementById('newPropFields').style.display='none';
+  document.getElementById('existingPropInfo').style.display='none';
+  document.getElementById('compareBox').style.display='none';
+  document.querySelectorAll('.toggle-opt').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.toggle-opt[data-val="elec"]').classList.add('active');
+  updateReadingLabel();
+  hidePropSuggest();
+  document.getElementById('saveBtn').textContent = t('btn_save');
+  if(!keepMsg) document.getElementById('saveMsg').textContent='';
+}
+
+// ---------- edit / delete ----------
+function editRecord(key){
+  const [pid, type, year, month] = key.split('_');
+  const prop = DATA.properties.find(p=>p.id===parseInt(pid));
+  const rec = DATA.records[key];
+  if(!prop || !rec) return;
+  editingKey = key;
+  document.getElementById('propInput').value = prop.address;
+  hidePropSuggest();
+  document.getElementById('newPropFields').style.display='none';
+  document.getElementById('existingPropInfo').innerHTML = `
+    <div class="row"><span class="k">${t('label_company')}</span><span class="v">${esc(prop.company||'—')}</span></div>
+    <div class="row"><span class="k">${t('label_branch')}</span><span class="v">${esc(prop.branch||'—')}</span></div>
+    <div class="row"><span class="k">${t('label_usage')}</span><span class="v">${esc(prop.usage||'—')}</span></div>
+    <div class="row"><span class="k">${t('label_tnb_acc')}</span><span class="v">${esc(prop.tnbAccount||'—')}</span></div>
+    <div class="row"><span class="k">${t('label_water_acc')}</span><span class="v">${esc(prop.waterAccount||'—')}</span></div>
+  `;
+  document.getElementById('existingPropInfo').style.display='block';
+  document.querySelectorAll('.toggle-opt').forEach(b=>b.classList.toggle('active', b.getAttribute('data-val')===type));
+  document.getElementById('yearInput').value = year;
+  document.getElementById('monthInput').value = month;
+  document.getElementById('readingInput').value = rec.reading ?? '';
+  document.getElementById('costInput').value = rec.cost ?? '';
+  document.getElementById('remarksInput').value = rec.remarks ?? '';
+  updateReadingLabel();
+  updateCompareBox();
+  document.getElementById('saveBtn').textContent = t('btn_update');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+async function deleteRecord(key){
+  if(!confirm(t('confirm_delete'))) return;
+  delete DATA.records[key];
+  await persist();
+  renderTable();
+  if(document.getElementById('dashboardView').style.display!=='none') renderDashboard();
+}
+
+// ---------- table ----------
+function populateFilterTypeOptions(){
+  const sel = document.getElementById('filterType');
+  const cur = sel.value;
+  sel.innerHTML = `<option value="ALL">${t('opt_all_types')}</option><option value="elec">${t('opt_elec')}</option><option value="water">${t('opt_water')}</option>`;
+  sel.value = cur || 'ALL';
+}
+
+function populateFilterYears(){
+  const years = Array.from(new Set(Object.keys(DATA.records).map(k=>k.split('_')[2]))).sort();
+  const sel = document.getElementById('filterYear');
+  const cur = sel.value;
+  sel.innerHTML = `<option value="ALL">${t('opt_all_years')}</option>` + years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  sel.value = years.includes(cur) ? cur : 'ALL';
+}
+
+function renderTable(){
+  const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+  const typeFilter = document.getElementById('filterType').value;
+  const yearFilter = document.getElementById('filterYear').value;
+
+  let rows = Object.entries(DATA.records).map(([key, rec])=>{
+    const [pidStr, type, yearStr, month] = key.split('_');
+    const pid = parseInt(pidStr);
+    const prop = DATA.properties.find(p=>p.id===pid);
+    return { key, rec, type, year: parseInt(yearStr), month, prop };
+  }).filter(r=>r.prop);
+
+  if(typeFilter!=='ALL') rows = rows.filter(r=>r.type===typeFilter);
+  if(yearFilter!=='ALL') rows = rows.filter(r=>String(r.year)===yearFilter);
+  if(search) rows = rows.filter(r=> (r.prop.address+' '+r.prop.company).toLowerCase().includes(search));
+
+  const monthIdx = m=>MONTHS.indexOf(m);
+  rows.sort((a,b)=> b.year-a.year || monthIdx(b.month)-monthIdx(a.month) || a.prop.address.localeCompare(b.prop.address));
+
+  const tbody = document.getElementById('recordsBody');
+  const emptyNote = document.getElementById('emptyNote');
+
+  if(rows.length===0){
+    tbody.innerHTML=''; emptyNote.style.display='block'; return;
+  }
+  emptyNote.style.display='none';
+
+  tbody.innerHTML = rows.map(r=>{
+    const prevKey = `${r.prop.id}_${r.type}_${r.year-1}_${r.month}`;
+    const prevRec = DATA.records[prevKey];
+    const cd = prevRec ? pctDelta(prevRec.cost, r.rec.cost) : null;
+    const unit = r.type==='elec' ? 'kWh' : 'm³';
+    const accNo = r.type==='elec' ? r.prop.tnbAccount : r.prop.waterAccount;
+    return `<tr>
+      <td class="addr-cell" title="${esc(r.prop.address)}">${esc(r.prop.address)}</td>
+      <td><span class="type-pill ${r.type}">${r.type==='elec'?t('opt_elec'):t('opt_water')}</span></td>
+      <td class="company-cell" title="${esc(r.prop.company)}">${esc(r.prop.company || '—')}</td>
+      <td>${esc(r.prop.branch || '—')}</td>
+      <td class="usage-cell" title="${esc(r.prop.usage)}">${esc(r.prop.usage || '—')}</td>
+      <td>${esc(accNo || '—')}</td>
+      <td>${monthLabel(r.month)}</td>
+      <td>${r.year}</td>
+      <td>${fmtNum(r.rec.reading)} ${unit}</td>
+      <td>${prevRec ? fmtNum(prevRec.reading)+' '+unit : '—'}</td>
+      <td>${fmtRM(r.rec.cost)}</td>
+      <td>${prevRec ? fmtRM(prevRec.cost) : '—'}</td>
+      <td class="${deltaClass(cd)}">${deltaArrow(cd)}</td>
+      <td class="remark-cell" title="${esc(r.rec.remarks)}">${esc(r.rec.remarks)}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" title="${t('title_edit')}" data-edit="${r.key}">✎</button>
+        <button class="icon-btn" title="${t('title_delete')}" data-del="${r.key}">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>editRecord(b.getAttribute('data-edit'))));
+  tbody.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>deleteRecord(b.getAttribute('data-del'))));
+}
+
+// ---------- export ----------
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'rekod-bil-utiliti.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportExcel(){
+  const headers = LANG==='en'
+    ? ['Location','Type','Year','Month','Reading','Cost','Remarks','Company','Branch','Usage','TNB Account No','TNB Tariff','Water Account No','Water Provider','Billing Period']
+    : ['Lokasi','Jenis','Tahun','Bulan','Bacaan','Kos','Catatan','Syarikat','Cawangan','Kegunaan','No Akaun TNB','Tarif TNB','No Akaun Air','Pembekal Air','Tempoh Bil'];
+
+  const monthIdx = m=>MONTHS.indexOf(m);
+  const rows = Object.entries(DATA.records).map(([key, rec])=>{
+    const [pidStr, type, yearStr, month] = key.split('_');
+    const pid = parseInt(pidStr);
+    const prop = DATA.properties.find(p=>p.id===pid);
+    return { key, rec, type, year: parseInt(yearStr), month, prop };
+  }).filter(r=>r.prop);
+  rows.sort((a,b)=> (a.prop.address.localeCompare(b.prop.address)) || (b.year-a.year) || (monthIdx(b.month)-monthIdx(a.month)));
+
+  const aoa = [headers, ...rows.map(r=>[
+    r.prop.address,
+    r.type==='elec' ? t('opt_elec_plain') : t('opt_water_plain'),
+    r.year,
+    monthLabel(r.month),
+    r.rec.reading ?? '',
+    r.rec.cost ?? '',
+    r.rec.remarks || '',
+    r.prop.company || '',
+    r.prop.branch || '',
+    r.prop.usage || '',
+    r.prop.tnbAccount || '',
+    r.prop.tariff || '',
+    r.prop.waterAccount || '',
+    r.prop.provider || '',
+    r.prop.billingPeriod || '',
+  ])];
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = headers.map(()=>({wch:22}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, LANG==='en' ? 'Records' : 'Rekod');
+  XLSX.writeFile(wb, LANG==='en' ? 'bill-records-export.xlsx' : 'eksport-rekod-bil.xlsx');
+}
+
+// ---------- import excel ----------
+const IMPORT_HEADER_MAP = {
+  address: ['lokasi','alamat','property','address','lokasiproperty','namalokasi','location'],
+  type: ['jenis','type','utiliti','jenisutiliti'],
+  year: ['tahun','year'],
+  month: ['bulan','month'],
+  reading: ['bacaan','reading','bacaankwh','bacaanm3'],
+  cost: ['kos','cost','kosrm'],
+  remarks: ['catatan','remarks','notes','catatanpilihan'],
+  company: ['syarikat','company'],
+  branch: ['cawangan','branch'],
+  usage: ['kegunaan','usage'],
+  tnbAccount: ['noakauntnb','tnbaccount','tnbaccountno'],
+  tariff: ['tariftnb','tariff','tarif','tnbtariff'],
+  waterAccount: ['noakaunair','wateraccount','wateraccountno'],
+  provider: ['pembekalair','provider','waterprovider'],
+  billingPeriod: ['tempohbil','billingperiod'],
+};
+
+function normHeader(h){
+  return String(h||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+}
+
+function buildHeaderIndex(headerRow){
+  const idx = {};
+  headerRow.forEach((raw, i)=>{
+    const n = normHeader(raw);
+    for(const field in IMPORT_HEADER_MAP){
+      if(IMPORT_HEADER_MAP[field].includes(n) && idx[field]===undefined){
+        idx[field] = i;
+      }
+    }
+  });
+  return idx;
+}
+
+const MONTH_LOOKUP = (()=>{
+  const m = {};
+  MONTHS.forEach((code,i)=>{
+    m[normHeader(code)] = code;
+    m[normHeader(MONTHS_LABEL[code])] = code;
+    m[String(i+1)] = code;
+  });
+  m[normHeader('Jun')] = 'JUNE'; // common short Malay spelling clash
+  m[normHeader('Julai')] = 'JULY';
+  m[normHeader('Sep')] = 'SEPT';
+  m[normHeader('Mei')] = 'MAY';
+  return m;
+})();
+
+function parseMonthValue(v){
+  const n = normHeader(v);
+  return MONTH_LOOKUP[n] || null;
+}
+
+function parseTypeValue(v){
+  const n = String(v||'').toLowerCase();
+  if(n.includes('air') || n.includes('water')) return 'water';
+  if(n.includes('elec') || n.includes('elektrik') || n.includes('tnb')) return 'elec';
+  return null;
+}
+
+function parseNumberValue(v){
+  if(v===undefined || v===null || v==='') return null;
+  const n = parseFloat(String(v).replace(/,/g,'').replace(/rm/i,'').trim());
+  return isNaN(n) ? null : n;
+}
+
+function triggerImport(){
+  document.getElementById('importFileInput').click();
+}
+
+function handleImportFile(e){
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    try{
+      const wb = XLSX.read(ev.target.result, {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
+      await runImport(rows);
+    }catch(err){
+      showImportResult({total:0, imported:0, newProps:0, errors:[`Gagal baca fail: ${err.message}`]});
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function runImport(rows){
+  if(!rows.length){
+    showImportResult({total:0, imported:0, newProps:0, errors:[t('err_empty_file')]});
+    return;
+  }
+  const headerRow = rows[0];
+  const idx = buildHeaderIndex(headerRow);
+  const dataRows = rows.slice(1);
+
+  const errors = [];
+  let imported = 0;
+  let newProps = 0;
+
+  if(idx.address===undefined || idx.year===undefined || idx.month===undefined || idx.cost===undefined){
+    showImportResult({total:dataRows.length, imported:0, newProps:0,
+      errors:[t('err_missing_columns')]});
+    return;
+  }
+
+  dataRows.forEach((row, i)=>{
+    const rowNum = i + 2; // account for header row, 1-indexed
+    const addr = String(row[idx.address]||'').trim();
+    if(!addr){ return; } // skip blank rows silently
+
+    const year = parseInt(row[idx.year]);
+    const month = parseMonthValue(row[idx.month]);
+    const cost = idx.cost!==undefined ? parseNumberValue(row[idx.cost]) : null;
+    let type = idx.type!==undefined ? parseTypeValue(row[idx.type]) : 'elec';
+    if(!type) type = 'elec';
+
+    if(isNaN(year)){ errors.push(t('err_invalid_year',{row:rowNum})); return; }
+    if(!month){ errors.push(t('err_invalid_month',{row:rowNum, val:row[idx.month]})); return; }
+    if(cost===null){ errors.push(t('err_invalid_cost',{row:rowNum})); return; }
+
+    let prop = findPropertyByAddress(addr);
+    if(!prop){
+      prop = {
+        id: nextPropId(),
+        address: addr,
+        company: idx.company!==undefined ? String(row[idx.company]||'').trim() : '',
+        branch: idx.branch!==undefined ? String(row[idx.branch]||'').trim() : '',
+        usage: idx.usage!==undefined ? String(row[idx.usage]||'').trim() : '',
+        tariff: idx.tariff!==undefined ? String(row[idx.tariff]||'').trim() : '',
+        provider: idx.provider!==undefined ? (String(row[idx.provider]||'').trim() || 'SYABAS') : 'SYABAS',
+        billingPeriod: idx.billingPeriod!==undefined ? String(row[idx.billingPeriod]||'').trim() : '',
+        tnbAccount: idx.tnbAccount!==undefined ? String(row[idx.tnbAccount]||'').trim() : '',
+        waterAccount: idx.waterAccount!==undefined ? String(row[idx.waterAccount]||'').trim() : '',
+      };
+      DATA.properties.push(prop);
+      newProps++;
+    }
+
+    const reading = idx.reading!==undefined ? parseNumberValue(row[idx.reading]) : null;
+    const remarks = idx.remarks!==undefined ? String(row[idx.remarks]||'').trim() : '';
+    const key = `${prop.id}_${type}_${year}_${month}`;
+    DATA.records[key] = { reading, cost, remarks };
+    imported++;
+  });
+
+  if(imported>0){
+    await persist();
+    populateFilterYears();
+    renderTable();
+    document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
+  }
+
+  showImportResult({total:dataRows.length, imported, newProps, errors});
+}
+
+function showImportResult({total, imported, newProps, errors}){
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const errorsHtml = errors.length
+    ? `<div class="import-errors">${errors.slice(0,50).map(e=>`<div>⚠ ${esc(e)}</div>`).join('')}${errors.length>50?`<div>${t('import_more_errors',{n:errors.length-50})}</div>`:''}</div>`
+    : `<div style="color:var(--down);">${t('import_no_errors')}</div>`;
+  backdrop.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>${t('import_result_title')}</h3>
+        <button class="close-x" id="importModalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="import-stats">
+          <div class="import-stat"><div class="n">${total}</div><div class="l">${t('import_stat_rows')}</div></div>
+          <div class="import-stat"><div class="n" style="color:var(--down)">${imported}</div><div class="l">${t('import_stat_success')}</div></div>
+          <div class="import-stat"><div class="n" style="color:var(--elec)">${newProps}</div><div class="l">${t('import_stat_newloc')}</div></div>
+        </div>
+        ${errorsHtml}
+      </div>
+      <div class="modal-foot">
+        <button class="btn primary" id="importModalOk">${t('btn_ok')}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  const close = ()=> backdrop.remove();
+  document.getElementById('importModalClose').addEventListener('click', close);
+  document.getElementById('importModalOk').addEventListener('click', close);
+  backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
+}
+
+function downloadTemplate(){
+  const headers = LANG==='en'
+    ? ['Location','Type','Year','Month','Reading','Cost','Remarks','Company','Branch','Usage','TNB Account No','TNB Tariff','Water Account No','Water Provider','Billing Period']
+    : ['Lokasi','Jenis','Tahun','Bulan','Bacaan','Kos','Catatan','Syarikat','Cawangan','Kegunaan','No Akaun TNB','Tarif TNB','No Akaun Air','Pembekal Air','Tempoh Bil'];
+  const sample = LANG==='en' ? [
+    ['Lot 1355, Jln Tg. Shawal Bt. 2, Kg. Sg. Pinang, 41400 Klang, Selangor','Electric',2026,'July',600,320.5,'','Khidmat Rentang Sdn Bhd','HDD','HDD Store','220023585206','B : Commercial','3941587568','SYABAS','4th - 3rd'],
+    ['New Sample Location Address, Klang, Selangor','Water',2026,'July',45,150.2,'','','','','','','','',''],
+  ] : [
+    ['Lot 1355, Jln Tg. Shawal Bt. 2, Kg. Sg. Pinang, 41400 Klang, Selangor','Elektrik',2026,'Julai',600,320.5,'','Khidmat Rentang Sdn Bhd','HDD','HDD Store','220023585206','B : Perdagangan','3941587568','SYABAS','4th - 3rd'],
+    ['Alamat Lokasi Baru Contoh, Klang, Selangor','Air',2026,'Julai',45,150.2,'','','','','','','','',''],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...sample]);
+  ws['!cols'] = headers.map(()=>({wch:22}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, LANG==='en'?'Template':'Templat');
+  XLSX.writeFile(wb, LANG==='en'?'import-template-bill-records.xlsx':'templat-import-rekod-bil.xlsx');
+}
+
+// ---------- init ----------
+// ---------- dashboard ----------
+let dashCharts = {};
+let dashYear = null;
+let dashBranchFilter = 'ALL';
+let dashTypeFilter = 'ALL';
+
+function destroyDashCharts(){
+  Object.values(dashCharts).forEach(c=>c && c.destroy());
+  dashCharts = {};
+}
+
+function recVal(pid, type, year, month, field){
+  const rec = DATA.records[`${pid}_${type}_${year}_${month}`];
+  return rec ? rec[field] : null;
+}
+function sumFieldFor(props, type, year, month, field){
+  let s=0, any=false;
+  props.forEach(p=>{
+    const v = recVal(p.id, type, year, month, field);
+    if(v!==null && v!==undefined && !isNaN(v)){ s+=v; any=true; }
+  });
+  return any ? s : null;
+}
+function lastMonthWithDataFor(props, type, year, field){
+  let idx=-1;
+  MONTHS.forEach((m,i)=>{ if(sumFieldFor(props, type, year, m, field)!==null) idx=i; });
+  return idx;
+}
+function sumUpToMonthFor(props, type, year, field, uptoIdx){
+  let s=0, any=false;
+  for(let i=0;i<=uptoIdx;i++){
+    const v = sumFieldFor(props, type, year, MONTHS[i], field);
+    if(v!==null){ s+=v; any=true; }
+  }
+  return any ? s : null;
+}
+function propTotal(prop, type, year, field, uptoIdx){
+  let s=0, any=false;
+  for(let i=0;i<=uptoIdx;i++){
+    const v = recVal(prop.id, type, year, MONTHS[i], field);
+    if(v!==null && v!==undefined && !isNaN(v)){ s+=v; any=true; }
+  }
+  return any ? s : null;
+}
+
+function allYearsInData(){
+  return Array.from(new Set(Object.keys(DATA.records).map(k=>k.split('_')[2]))).map(Number).sort((a,b)=>a-b);
+}
+
+function getDashFilteredProps(){
+  return DATA.properties.filter(p => dashBranchFilter==='ALL' || p.branch===dashBranchFilter);
+}
+
+function renderDashboard(){
+  const container = document.getElementById('dashboardView');
+  const years = allYearsInData();
+  if(years.length===0){ container.innerHTML = `<div class="empty-note">${t('empty_note_dash')}</div>`; return; }
+  if(!dashYear || !years.includes(dashYear)) dashYear = years[years.length-1];
+  const prevYear = dashYear - 1;
+
+  const allBranches = Array.from(new Set(DATA.properties.map(p=>p.branch).filter(Boolean))).sort();
+  const fProps = getDashFilteredProps();
+  const showElec = dashTypeFilter==='ALL' || dashTypeFilter==='elec';
+  const showWater = dashTypeFilter==='ALL' || dashTypeFilter==='water';
+
+  const lastE = lastMonthWithDataFor(fProps, 'elec', dashYear, 'cost');
+  const lastW = lastMonthWithDataFor(fProps, 'water', dashYear, 'cost');
+  const elecCur = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', dashYear, 'cost', lastE) : null;
+  const elecPrev = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', prevYear, 'cost', lastE) : null;
+  const waterCur = lastW>=0 ? sumUpToMonthFor(fProps, 'water', dashYear, 'cost', lastW) : null;
+  const waterPrev = lastW>=0 ? sumUpToMonthFor(fProps, 'water', prevYear, 'cost', lastW) : null;
+  const kwhCur = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', dashYear, 'reading', lastE) : null;
+  const m3Cur = lastW>=0 ? sumUpToMonthFor(fProps, 'water', dashYear, 'reading', lastW) : null;
+  const ed = pctDelta(elecPrev, elecCur);
+  const wd = pctDelta(waterPrev, waterCur);
+
+  const branches = Array.from(new Set(fProps.map(p=>p.branch).filter(Boolean))).sort();
+
+  const propsWithElecCur = fProps.map(p=>({p, total: lastE>=0 ? propTotal(p,'elec',dashYear,'cost',lastE) : null})).filter(x=>x.total!==null);
+  const propsWithWaterCur = fProps.map(p=>({p, total: lastW>=0 ? propTotal(p,'water',dashYear,'cost',lastW) : null})).filter(x=>x.total!==null);
+  const topElec = propsWithElecCur.sort((a,b)=>b.total-a.total).slice(0,8);
+  const topWater = propsWithWaterCur.sort((a,b)=>b.total-a.total).slice(0,8);
+  const maxElec = Math.max(...topElec.map(x=>x.total), 1);
+  const maxWater = Math.max(...topWater.map(x=>x.total), 1);
+
+  const cardsHtml = [
+    showElec ? `<div class="dash-card"><div class="lbl">${t('card_elec_cost',{year:dashYear})}</div><div class="val">${fmtRM(elecCur)}</div><div class="delta ${deltaClass(ed)}">${deltaArrow(ed)} ${t('delta_vs',{year:prevYear, val:fmtRM(elecPrev)})}</div></div>` : '',
+    showWater ? `<div class="dash-card"><div class="lbl">${t('card_water_cost',{year:dashYear})}</div><div class="val">${fmtRM(waterCur)}</div><div class="delta ${deltaClass(wd)}">${deltaArrow(wd)} ${t('delta_vs',{year:prevYear, val:fmtRM(waterPrev)})}</div></div>` : '',
+    showElec ? `<div class="dash-card"><div class="lbl">${t('card_elec_kwh',{year:dashYear})}</div><div class="val">${fmtNum(kwhCur)} <small>kWh</small></div><div class="delta neu">${t('card_locations',{n:propsWithElecCur.length})}</div></div>` : '',
+    showWater ? `<div class="dash-card"><div class="lbl">${t('card_water_m3',{year:dashYear})}</div><div class="val">${fmtNum(m3Cur)} <small>m³</small></div><div class="delta neu">${t('card_locations',{n:propsWithWaterCur.length})}</div></div>` : '',
+  ].join('');
+
+  const legendHtml = [
+    showElec ? `<span><i class="legend-dot" style="background:var(--elec)"></i>${t('legend_year',{type:t('opt_elec_plain'), year:dashYear})}</span>` : '',
+    showElec ? `<span><i class="legend-dot" style="background:var(--elec-dim);border:1px dashed var(--elec)"></i>${t('legend_year',{type:t('opt_elec_plain'), year:prevYear})}</span>` : '',
+    showWater ? `<span><i class="legend-dot" style="background:var(--water)"></i>${t('legend_year',{type:t('opt_water_plain'), year:dashYear})}</span>` : '',
+    showWater ? `<span><i class="legend-dot" style="background:var(--water-dim);border:1px dashed var(--water)"></i>${t('legend_year',{type:t('opt_water_plain'), year:prevYear})}</span>` : '',
+  ].join('');
+
+  const rankPanelsHtml = [
+    showElec ? `<div class="dash-panel">
+        <div class="dash-panel-head"><h3>${t('top_elec_title',{year:dashYear})}</h3></div>
+        <div id="dashRankElec"></div>
+      </div>` : '',
+    showWater ? `<div class="dash-panel">
+        <div class="dash-panel-head"><h3>${t('top_water_title',{year:dashYear})}</h3></div>
+        <div id="dashRankWater"></div>
+      </div>` : '',
+  ].join('');
+
+  container.innerHTML = `
+    <div class="dash-panel-head" style="margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+      <h3>${t('dash_overview')}</h3>
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <div>
+          <label style="font-size:11px;color:var(--muted);margin-right:6px;">${t('label_branch')}</label>
+          <select class="dash-year-select" id="dashBranchSelect">
+            <option value="ALL">${t('opt_all_branches')}</option>
+            ${allBranches.map(b=>`<option value="${esc(b)}" ${b===dashBranchFilter?'selected':''}>${esc(b)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--muted);margin-right:6px;">${t('label_utility_type')}</label>
+          <select class="dash-year-select" id="dashTypeSelect">
+            <option value="ALL" ${dashTypeFilter==='ALL'?'selected':''}>${t('opt_all_types')}</option>
+            <option value="elec" ${dashTypeFilter==='elec'?'selected':''}>${t('opt_elec')}</option>
+            <option value="water" ${dashTypeFilter==='water'?'selected':''}>${t('opt_water')}</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--muted);margin-right:6px;">${t('label_year')}</label>
+          <select class="dash-year-select" id="dashYearSelect">${years.map(y=>`<option value="${y}" ${y===dashYear?'selected':''}>${y}</option>`).join('')}</select>
+        </div>
+      </div>
+    </div>
+    <div class="dash-cards">
+      ${cardsHtml}
+    </div>
+
+    <div class="dash-panel">
+      <div class="dash-panel-head">
+        <h3>${t('trend_title')}</h3>
+        <div class="dash-legend">
+          ${legendHtml}
+        </div>
+      </div>
+      <div class="dash-chart-wrap" style="height:290px;"><canvas id="dashChartTrend"></canvas></div>
+    </div>
+
+    <div class="dash-two-col">
+      ${rankPanelsHtml}
+    </div>
+
+    <div class="dash-panel">
+      <div class="dash-panel-head"><h3>${t('branch_breakdown_title',{year:dashYear})}</h3></div>
+      <div class="dash-chart-wrap" style="height:270px;"><canvas id="dashChartBranch"></canvas></div>
+    </div>
+  `;
+
+  document.getElementById('dashYearSelect').addEventListener('change', (e)=>{ dashYear = parseInt(e.target.value); renderDashboard(); });
+  document.getElementById('dashBranchSelect').addEventListener('change', (e)=>{ dashBranchFilter = e.target.value; renderDashboard(); });
+  document.getElementById('dashTypeSelect').addEventListener('change', (e)=>{ dashTypeFilter = e.target.value; renderDashboard(); });
+
+  if(showElec){
+    const rankElecEl = document.getElementById('dashRankElec');
+    rankElecEl.innerHTML = topElec.map((x,i)=>{
+      const w = (x.total/maxElec*100).toFixed(1);
+      return `<div class="rank-row"><div class="rn">${i+1}</div><div class="rname" title="${esc(x.p.address)}">${esc(x.p.address)}<span class="rcompany">${esc(x.p.company||'')}</span></div><div class="rbar-wrap"><div class="rbar" style="width:${w}%;background:var(--elec)"></div></div><div class="rval">${fmtRM(x.total)}</div></div>`;
+    }).join('') || `<div class="empty-note">${t('empty_note_ranking')}</div>`;
+  }
+
+  if(showWater){
+    const rankWaterEl = document.getElementById('dashRankWater');
+    rankWaterEl.innerHTML = topWater.map((x,i)=>{
+      const w = (x.total/maxWater*100).toFixed(1);
+      return `<div class="rank-row"><div class="rn">${i+1}</div><div class="rname" title="${esc(x.p.address)}">${esc(x.p.address)}<span class="rcompany">${esc(x.p.company||'')}</span></div><div class="rbar-wrap"><div class="rbar" style="width:${w}%;background:var(--water)"></div></div><div class="rval">${fmtRM(x.total)}</div></div>`;
+    }).join('') || `<div class="empty-note">${t('empty_note_ranking')}</div>`;
+  }
+
+  destroyDashCharts();
+
+  const monthlyElecCur = MONTHS.map(m=>sumFieldFor(fProps, 'elec', dashYear, m, 'cost'));
+  const monthlyElecPrev = MONTHS.map(m=>sumFieldFor(fProps, 'elec', prevYear, m, 'cost'));
+  const monthlyWaterCur = MONTHS.map(m=>sumFieldFor(fProps, 'water', dashYear, m, 'cost'));
+  const monthlyWaterPrev = MONTHS.map(m=>sumFieldFor(fProps, 'water', prevYear, m, 'cost'));
+  const monthLabels = MONTHS.map(m=>monthLabel(m).slice(0,3));
+
+  const trendDatasets = [];
+  if(showElec){
+    trendDatasets.push(lineDS(t('legend_year',{type:t('opt_elec_plain'),year:dashYear}), monthlyElecCur, '#f0a93b', false));
+    trendDatasets.push(lineDS(t('legend_year',{type:t('opt_elec_plain'),year:prevYear}), monthlyElecPrev, '#f0a93b', true));
+  }
+  if(showWater){
+    trendDatasets.push(lineDS(t('legend_year',{type:t('opt_water_plain'),year:dashYear}), monthlyWaterCur, '#3fb6d3', false));
+    trendDatasets.push(lineDS(t('legend_year',{type:t('opt_water_plain'),year:prevYear}), monthlyWaterPrev, '#3fb6d3', true));
+  }
+
+  dashCharts.trend = new Chart(document.getElementById('dashChartTrend'), {
+    type:'line',
+    data:{ labels: monthLabels, datasets: trendDatasets },
+    options: dashLineOptions('RM')
+  });
+
+  const branchDatasets = [];
+  if(showElec){
+    const branchElec = branches.map(b=> sumOrNull(fProps.filter(p=>p.branch===b).map(p=> lastE>=0 ? propTotal(p,'elec',dashYear,'cost',lastE) : null)) );
+    branchDatasets.push({ label:t('opt_elec_plain'), data: branchElec, backgroundColor:'#f0a93b', borderRadius:4, maxBarThickness:26 });
+  }
+  if(showWater){
+    const branchWater = branches.map(b=> sumOrNull(fProps.filter(p=>p.branch===b).map(p=> lastW>=0 ? propTotal(p,'water',dashYear,'cost',lastW) : null)) );
+    branchDatasets.push({ label:t('opt_water_plain'), data: branchWater, backgroundColor:'#3fb6d3', borderRadius:4, maxBarThickness:26 });
+  }
+
+  dashCharts.branch = new Chart(document.getElementById('dashChartBranch'), {
+    type:'bar',
+    data:{ labels: branches, datasets: branchDatasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#8a91a3', font:{family:"'Inter',sans-serif", size:11} } },
+        tooltip:{ callbacks:{ label:(ctx)=> ctx.dataset.label+': '+fmtRM(ctx.raw) } } },
+      scales:{
+        x:{ ticks:{ color:'#8a91a3', font:{size:11} }, grid:{ display:false } },
+        y:{ ticks:{ color:'#8a91a3', font:{size:10}, callback:(v)=>'RM '+v.toLocaleString() }, grid:{ color:'#1f2430' } }
+      }
+    }
+  });
+}
+
+function sumOrNull(arr){ let s=0, any=false; arr.forEach(v=>{ if(v!==null && v!==undefined && !isNaN(v)){ s+=v; any=true; } }); return any? s : null; }
+
+function lineDS(label, data, color, dashed){
+  return { label, data, borderColor: color, backgroundColor: color+'22',
+    borderDash: dashed? [4,3] : [], borderWidth: dashed? 1.5 : 2.5,
+    pointRadius: 2.5, pointBackgroundColor: color, tension:0.3, spanGaps:true, fill:false };
+}
+function dashLineOptions(unitPrefix){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{ mode:'index', intersect:false },
+    plugins:{ legend:{ display:false },
+      tooltip:{ callbacks:{ label:(ctx)=> ctx.dataset.label+': '+fmtRM(ctx.raw) } } },
+    scales:{
+      x:{ ticks:{ color:'#8a91a3', font:{size:11} }, grid:{ display:false } },
+      y:{ ticks:{ color:'#8a91a3', font:{size:10}, callback:(v)=>'RM '+v.toLocaleString() }, grid:{ color:'#1f2430' } }
+    }
+  };
+}
+
+async function init(){
+  try{
+    const res = await window.storage.get('ui-lang', false);
+    if(res && res.value && I18N[res.value]) LANG = res.value;
+  }catch(e){}
+  applyStaticI18n();
+  populateMonthSelect();
+  await loadData();
+  populateFilterTypeOptions();
+  populateFilterYears();
+  renderTable();
+  document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
+
+  document.getElementById('langBtn').addEventListener('click', ()=>{ setLang(LANG==='ms' ? 'en' : 'ms'); });
+  document.getElementById('recordForm').addEventListener('submit', handleSubmit);
+  document.getElementById('resetBtn').addEventListener('click', ()=>resetForm(false));
+  document.getElementById('propInput').addEventListener('input', (e)=>{
+    onPropInputChange();
+    renderPropSuggest(e.target.value);
+  });
+  document.getElementById('propInput').addEventListener('focus', (e)=>{
+    if(e.target.value.trim()) renderPropSuggest(e.target.value);
+  });
+  document.getElementById('propSuggest').addEventListener('mousedown', (e)=>{
+    const item = e.target.closest('.prop-suggest-item');
+    if(!item) return;
+    selectProperty(parseInt(item.getAttribute('data-id')));
+  });
+  document.addEventListener('click', (e)=>{
+    const wrap = document.getElementById('propInput').closest('.prop-suggest-wrap');
+    if(wrap && !wrap.contains(e.target)) hidePropSuggest();
+  });
+  document.getElementById('yearInput').addEventListener('input', updateCompareBox);
+  document.getElementById('monthInput').addEventListener('change', updateCompareBox);
+  document.getElementById('readingInput').addEventListener('input', updateCompareBox);
+  document.getElementById('costInput').addEventListener('input', updateCompareBox);
+  document.getElementById('exportBtn').addEventListener('click', exportJSON);
+  document.getElementById('exportExcelBtn').addEventListener('click', exportExcel);
+  document.getElementById('importBtn').addEventListener('click', triggerImport);
+  document.getElementById('importFileInput').addEventListener('change', handleImportFile);
+  document.getElementById('templateBtn').addEventListener('click', downloadTemplate);
+  document.getElementById('filterSearch').addEventListener('input', renderTable);
+  document.getElementById('filterType').addEventListener('change', renderTable);
+  document.getElementById('filterYear').addEventListener('change', renderTable);
+
+  document.querySelectorAll('.toggle-opt').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.toggle-opt').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      updateReadingLabel();
+      updateCompareBox();
+    });
+  });
+
+  document.querySelectorAll('.view-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const view = btn.getAttribute('data-view');
+      document.getElementById('recordsView').style.display = view==='records' ? 'block' : 'none';
+      document.getElementById('dashboardView').style.display = view==='dashboard' ? 'block' : 'none';
+      if(view==='dashboard') renderDashboard();
+    });
+  });
+}
+
+init();
+
+</script>
+</body>
+</html>
