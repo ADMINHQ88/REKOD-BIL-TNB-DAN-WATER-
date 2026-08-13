@@ -298,6 +298,7 @@ table.data-table tr:hover td{ background:#1c212b; }
               <option value="water" data-i18n="opt_water">💧 Air</option>
             </select>
             <select id="filterYear"></select>
+            <select id="filterMonth"></select>
           </div>
         </div>
         <div class="table-scroll">
@@ -483,6 +484,7 @@ const I18N = {
     ph_search_location: '🔍 Cari lokasi...',
     opt_all_types: 'Semua Jenis',
     opt_all_years: 'Semua Tahun',
+    opt_all_months: 'Semua Bulan',
     opt_all_branches: 'Semua Cawangan',
     th_location: '📍 Lokasi', th_type: 'Jenis', th_company: '🏢 Syarikat', th_branch: '🏬 Cawangan',
     th_usage: '🗂️ Kegunaan', th_account: '🔢 No. Akaun', th_month: '📅 Bulan', th_year: '🗓️ Tahun',
@@ -571,6 +573,7 @@ const I18N = {
     ph_search_location: '🔍 Search location...',
     opt_all_types: 'All Types',
     opt_all_years: 'All Years',
+    opt_all_months: 'All Months',
     opt_all_branches: 'All Branches',
     th_location: '📍 Location', th_type: 'Type', th_company: '🏢 Company', th_branch: '🏬 Branch',
     th_usage: '🗂️ Usage', th_account: '🔢 Account No.', th_month: '📅 Month', th_year: '🗓️ Year',
@@ -631,6 +634,7 @@ async function setLang(lang){
   applyStaticI18n();
   populateMonthSelect();
   populateFilterYears();
+  populateFilterMonthOptions();
   populateFilterTypeOptions();
   updateReadingLabel();
   if(editingKey===null) resetForm(true);
@@ -906,10 +910,18 @@ function populateFilterYears(){
   sel.value = years.includes(cur) ? cur : 'ALL';
 }
 
+function populateFilterMonthOptions(){
+  const sel = document.getElementById('filterMonth');
+  const cur = sel.value;
+  sel.innerHTML = `<option value="ALL">${t('opt_all_months')}</option>` + MONTHS.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
+  sel.value = cur || 'ALL';
+}
+
 function renderTable(){
   const search = document.getElementById('filterSearch').value.trim().toLowerCase();
   const typeFilter = document.getElementById('filterType').value;
   const yearFilter = document.getElementById('filterYear').value;
+  const monthFilter = document.getElementById('filterMonth').value;
 
   let rows = Object.entries(DATA.records).map(([key, rec])=>{
     const [pidStr, type, yearStr, month] = key.split('_');
@@ -920,6 +932,7 @@ function renderTable(){
 
   if(typeFilter!=='ALL') rows = rows.filter(r=>r.type===typeFilter);
   if(yearFilter!=='ALL') rows = rows.filter(r=>String(r.year)===yearFilter);
+  if(monthFilter!=='ALL') rows = rows.filter(r=>r.month===monthFilter);
   if(search) rows = rows.filter(r=> (r.prop.address+' '+r.prop.company).toLowerCase().includes(search));
 
   const monthIdx = m=>MONTHS.indexOf(m);
@@ -1482,6 +1495,7 @@ async function init(){
   await loadData();
   populateFilterTypeOptions();
   populateFilterYears();
+  populateFilterMonthOptions();
   renderTable();
   document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
 
@@ -1516,6 +1530,7 @@ async function init(){
   document.getElementById('filterSearch').addEventListener('input', renderTable);
   document.getElementById('filterType').addEventListener('change', renderTable);
   document.getElementById('filterYear').addEventListener('change', renderTable);
+  document.getElementById('filterMonth').addEventListener('change', renderTable);
 
   document.querySelectorAll('.toggle-opt').forEach(btn=>{
     btn.addEventListener('click', ()=>{
