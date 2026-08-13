@@ -308,19 +308,75 @@ table.data-table tr:hover td{ background:#1c212b; }
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ============================================================
-// STORAGE BRIDGE — guna window.storage (Claude) bila ada; kalau
-// tak (app dibuka standalone di luar Claude), sambung ke Google
-// Sheets melalui Google Apps Script Web App sebagai storan
-// DIKONGSI antara semua pengguna. Isi SHEETS_API_URL selepas deploy
-// skrip Google Apps Script (rujuk fail google-apps-script-backend.js
-// dan panduan setup yang disertakan).
+// STORAGE BRIDGE — guna window.storage (Claude) bila ada. Kalau
+// tak (app dibuka standalone di luar Claude), sambung ke SUPABASE
+// (database SQL sebenar — utamakan ini) atau Google Sheets sebagai
+// storan DIKONGSI antara semua pengguna. Isi salah satu sahaja:
+//   - SUPABASE_URL + SUPABASE_ANON_KEY (rujuk supabase-schema.sql
+//     dan panduan setup yang disertakan), ATAU
+//   - SHEETS_API_URL (rujuk google-apps-script-backend.js)
 // ============================================================
-const SHEETS_API_URL = ''; // <-- https://script.google.com/macros/s/AKfycbyPYITbnWBKrBmHIBrnAq40SsFFT-GC_WrkVqz2xnlSU5CFs8A8ocosl6okQkjNFH6lJQ/exec
+const SUPABASE_URL = 'https://azuqqxducpxlzhsqwwci.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_241D7GZcTrCyeUGeP2aGTw_MDRsN3xW';
+const SHEETS_API_URL = '';     // <-- URL Web App Google Apps Script (alternatif kepada Supabase)
+
+let supabaseClient = null;
+if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+async function supabaseLoadAppData(){
+  const { data: props, error: e1 } = await supabaseClient.from('properties').select('*');
+  if (e1) throw e1;
+  const { data: recs, error: e2 } = await supabaseClient.from('records').select('*');
+  if (e2) throw e2;
+  if (!props || props.length === 0) throw new Error('not found');
+  const properties = props.map(p => ({
+    id: p.id, address: p.address, company: p.company || '', branch: p.branch || '',
+    usage: p.usage || '', tariff: p.tariff || '', provider: p.provider || '',
+    billingPeriod: p.billing_period || '', tnbAccount: p.tnb_account || '', waterAccount: p.water_account || ''
+  }));
+  const records = {};
+  (recs || []).forEach(r => {
+    records[`${r.property_id}_${r.type}_${r.year}_${r.month}`] = { reading: r.reading, cost: r.cost, remarks: r.remarks || '' };
+  });
+  return JSON.stringify({ properties, records });
+}
+
+async function supabaseSaveAppData(value){
+  const parsed = JSON.parse(value);
+  // ganti sepenuhnya kandungan jadual dengan state semasa dari app (mudah & selamat untuk skala kecil)
+  await supabaseClient.from('records').delete().not('id', 'is', null);
+  await supabaseClient.from('properties').delete().not('id', 'is', null);
+  if (parsed.properties && parsed.properties.length) {
+    const rows = parsed.properties.map(p => ({
+      id: p.id, address: p.address, company: p.company || '', branch: p.branch || '',
+      usage: p.usage || '', tariff: p.tariff || '', provider: p.provider || '',
+      billing_period: p.billingPeriod || '', tnb_account: p.tnbAccount || '', water_account: p.waterAccount || ''
+    }));
+    const { error } = await supabaseClient.from('properties').insert(rows);
+    if (error) throw error;
+  }
+  const recordRows = Object.entries(parsed.records || {}).map(([k, rec]) => {
+    const [pid, type, year, month] = k.split('_');
+    return { property_id: parseInt(pid), type, year: parseInt(year), month, reading: rec.reading, cost: rec.cost, remarks: rec.remarks || '' };
+  });
+  if (recordRows.length) {
+    const { error } = await supabaseClient.from('records').insert(recordRows);
+    if (error) throw error;
+  }
+}
+
 if (!window.storage) {
   window.storage = {
     async get(key, shared){
+      if (shared && key === 'app-data' && supabaseClient) {
+        const value = await supabaseLoadAppData();
+        return { key, value, shared };
+      }
       if (shared && SHEETS_API_URL) {
         const res = await fetch(`${SHEETS_API_URL}?key=${encodeURIComponent(key)}`);
         const data = await res.json();
@@ -332,6 +388,10 @@ if (!window.storage) {
       return { key, value: v, shared };
     },
     async set(key, value, shared){
+      if (shared && key === 'app-data' && supabaseClient) {
+        await supabaseSaveAppData(value);
+        return { key, value, shared };
+      }
       if (shared && SHEETS_API_URL) {
         await fetch(SHEETS_API_URL, {
           method: 'POST',
