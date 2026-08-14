@@ -16,21 +16,39 @@
   --elec:#f0a93b; --elec-dim:#6b5426; --water:#3fb6d3; --water-dim:#24505a;
   --up:#e5605a; --down:#4cc38a; --flat:#8a91a3;
   --radius:10px; --mono:'IBM Plex Mono',monospace; --sans:'Inter',sans-serif;
+  --hover-bg:#1c212b; --scrollbar-thumb:#2f3644; --topbar-grad:#161a22;
+  --on-accent:#14171b; --elec-2:#d98b1f;
+  --danger-bg:#3a2020; --danger-border:#5a2a2a;
+  --newprop-bg:#1c2130; --newprop-border:#3a4258;
+  --modal-overlay: rgba(8,10,14,0.72);
+  --chart-grid:#1f2430; --chart-tick:#8a91a3;
+}
+[data-theme="light"]{
+  --bg:#f3f4f7; --panel:#ffffff; --panel-2:#eef0f5; --border:#dde1e9;
+  --text:#1a1d24; --muted:#666f80; --muted-2:#9199a8;
+  --elec:#c97a15; --elec-dim:#fbe6c4; --water:#1a8aa6; --water-dim:#d3edf3;
+  --up:#c8434d; --down:#1f9d63; --flat:#666f80;
+  --hover-bg:#eef1f6; --scrollbar-thumb:#c7cede; --topbar-grad:#ffffff;
+  --on-accent:#241a08; --elec-2:#b56d10;
+  --danger-bg:#fbe4e4; --danger-border:#f0b8b8;
+  --newprop-bg:#eef1f6; --newprop-border:#c7cede;
+  --modal-overlay: rgba(30,33,40,0.45);
+  --chart-grid:#e4e7ee; --chart-tick:#666f80;
 }
 *{ box-sizing:border-box; }
 html,body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); }
 #app{ min-height:100vh; }
 ::-webkit-scrollbar{ width:8px; height:8px; }
-::-webkit-scrollbar-thumb{ background:#2f3644; border-radius:4px; }
+::-webkit-scrollbar-thumb{ background:var(--scrollbar-thumb); border-radius:4px; }
 
 .topbar{
   display:flex; align-items:center; justify-content:space-between; padding:14px 22px;
-  border-bottom:1px solid var(--border); background:linear-gradient(180deg,#161a22,#12151b);
+  border-bottom:1px solid var(--border); background:linear-gradient(180deg,var(--topbar-grad),var(--bg));
   flex-wrap:wrap; gap:10px;
 }
 .brand{ display:flex; align-items:center; gap:12px; }
-.brand-mark{ font-family:var(--mono); font-weight:700; font-size:13px; color:#0d0f13;
-  background:linear-gradient(135deg,var(--elec),#d98b1f); padding:8px 10px; border-radius:6px; }
+.brand-mark{ font-family:var(--mono); font-weight:700; font-size:13px; color:var(--on-accent);
+  background:linear-gradient(135deg,var(--elec),var(--elec-2)); padding:8px 10px; border-radius:6px; }
 .brand-text h1{ margin:0; font-size:17px; font-weight:800; }
 .brand-text p{ margin:2px 0 0; font-size:12px; color:var(--muted); font-family:var(--mono); }
 .brand-text p.shared-note{ color:var(--water); font-family:var(--sans); font-size:11.5px; margin-top:4px; }
@@ -39,10 +57,10 @@ html,body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--
 .btn{ font-family:var(--sans); font-size:12.5px; font-weight:600; border-radius:7px; padding:9px 16px;
   cursor:pointer; border:1px solid var(--border); transition:filter .15s; }
 .btn:hover{ filter:brightness(1.15); }
-.btn.primary{ background:linear-gradient(135deg,var(--elec),#d98b1f); color:#14171b; border:none; }
+.btn.primary{ background:linear-gradient(135deg,var(--elec),var(--elec-2)); color:var(--on-accent); border:none; }
 .btn.ghost{ background:var(--panel); color:var(--text); }
 .btn.small{ padding:5px 10px; font-size:11px; }
-.btn.danger{ background:#3a2020; color:var(--up); border-color:#5a2a2a; }
+.btn.danger{ background:var(--danger-bg); color:var(--up); border-color:var(--danger-border); }
 
 .layout{ display:grid; grid-template-columns: 380px 1fr; gap:0; align-items:start; }
 @media(max-width:980px){ .layout{ grid-template-columns:1fr; } }
@@ -72,7 +90,7 @@ html,body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--
 .field input:focus, .field select:focus{ border-color:var(--elec); }
 .field-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
-.new-prop-box{ background:#1c2130; border:1px dashed #3a4258; border-radius:8px; padding:12px; margin-bottom:14px; }
+.new-prop-box{ background:var(--newprop-bg); border:1px dashed var(--newprop-border); border-radius:8px; padding:12px; margin-bottom:14px; }
 .new-prop-note{ font-size:11.5px; color:var(--elec); margin-bottom:10px; font-weight:600; }
 .existing-prop-box{ background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:12px; line-height:1.7; }
 .existing-prop-box .row{ display:flex; justify-content:space-between; gap:10px; }
@@ -125,11 +143,11 @@ html,body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--
 .dash-two-col{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 @media(max-width:900px){ .dash-two-col{ grid-template-columns:1fr; } }
 
-.rank-row{ display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid #1f2430; }
+.rank-row{ display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--panel-2); }
 .rank-row .rn{ font-family:var(--mono); color:var(--muted-2); font-size:11px; width:16px; }
 .rank-row .rname{ flex:1; font-size:12px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; flex-direction:column; }
 .rank-row .rcompany{ font-size:10px; color:var(--muted-2); font-family:var(--sans); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.rank-row .rbar-wrap{ flex:1.2; background:#1f2430; border-radius:4px; overflow:hidden; height:7px; }
+.rank-row .rbar-wrap{ flex:1.2; background:var(--panel-2); border-radius:4px; overflow:hidden; height:7px; }
 .rank-row .rbar{ height:100%; border-radius:4px; }
 .rank-row .rval{ font-family:var(--mono); font-size:11px; width:82px; text-align:right; color:var(--muted); }
 .dash-year-select{ background:var(--panel-2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 8px; font-size:12px; font-family:var(--sans); }
@@ -145,8 +163,8 @@ table.data-table th{
   background:var(--panel-2); position:sticky; top:0;
 }
 table.data-table th:first-child, table.data-table td:first-child{ text-align:left; }
-table.data-table td{ text-align:right; padding:8px 10px; border-bottom:1px solid #1f2430; font-family:var(--mono); white-space:nowrap; }
-table.data-table tr:hover td{ background:#1c212b; }
+table.data-table td{ text-align:right; padding:8px 10px; border-bottom:1px solid var(--panel-2); font-family:var(--mono); white-space:nowrap; }
+table.data-table tr:hover td{ background:var(--hover-bg); }
 .remark-cell{ font-family:var(--sans); text-align:left !important; color:var(--muted); font-style:italic; max-width:180px; overflow:hidden; text-overflow:ellipsis; }
 .addr-cell{ max-width:220px; overflow:hidden; text-overflow:ellipsis; font-family:var(--sans); }
 .company-cell{ max-width:170px; overflow:hidden; text-overflow:ellipsis; font-family:var(--sans); text-align:left !important; color:var(--muted); }
@@ -160,7 +178,7 @@ table.data-table tr:hover td{ background:#1c212b; }
 .icon-btn:hover{ color:var(--text); }
 .empty-note{ color:var(--muted); font-size:12.5px; padding:24px; text-align:center; }
 
-.modal-backdrop{ position:fixed; inset:0; background:rgba(8,10,14,0.72); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px; }
+.modal-backdrop{ position:fixed; inset:0; background:var(--modal-overlay); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px; }
 .modal-box{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); width:100%; max-width:520px; max-height:82vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
 .modal-head{ padding:16px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
 .modal-head h3{ margin:0; font-size:14.5px; font-weight:700; }
@@ -170,7 +188,7 @@ table.data-table tr:hover td{ background:#1c212b; }
 .import-stat{ background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center; }
 .import-stat .n{ font-family:var(--mono); font-size:19px; font-weight:700; }
 .import-stat .l{ font-size:10px; color:var(--muted); text-transform:uppercase; margin-top:3px; }
-.import-errors{ background:var(--panel-2); border:1px solid #5a2a2a; border-radius:8px; padding:10px 12px; color:var(--up); font-family:var(--mono); font-size:11.5px; max-height:220px; overflow-y:auto; }
+.import-errors{ background:var(--panel-2); border:1px solid var(--danger-border); border-radius:8px; padding:10px 12px; color:var(--up); font-family:var(--mono); font-size:11.5px; max-height:220px; overflow-y:auto; }
 .import-errors div{ margin-bottom:4px; }
 .close-x{ background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:2px 6px; }
 .close-x:hover{ color:var(--text); }
@@ -178,9 +196,9 @@ table.data-table tr:hover td{ background:#1c212b; }
 .prop-suggest-wrap{ position:relative; }
 .prop-suggest{ position:absolute; top:100%; left:0; right:0; background:var(--panel); border:1px solid var(--border);
   border-radius:8px; margin-top:4px; max-height:280px; overflow-y:auto; z-index:50; box-shadow:0 10px 30px rgba(0,0,0,0.45); }
-.prop-suggest-item{ padding:8px 10px; cursor:pointer; border-bottom:1px solid #1f2430; }
+.prop-suggest-item{ padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--panel-2); }
 .prop-suggest-item:last-child{ border-bottom:none; }
-.prop-suggest-item:hover{ background:#1c212b; }
+.prop-suggest-item:hover{ background:var(--hover-bg); }
 .prop-suggest-addr{ font-size:12.5px; color:var(--text); font-family:var(--sans); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .prop-suggest-meta{ font-size:10.5px; color:var(--muted); font-family:var(--mono); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .prop-suggest-meta b{ color:var(--elec); font-weight:600; }
@@ -200,6 +218,7 @@ table.data-table tr:hover td{ background:#1c212b; }
       </div>
     </div>
     <div class="topbar-actions">
+      <button class="btn ghost" id="themeBtn">🌙</button>
       <button class="btn ghost" id="langBtn">🌐 EN</button>
       <button class="btn ghost" id="templateBtn" data-i18n="btn_template">📄 Templat Excel</button>
       <button class="btn ghost" id="importBtn" data-i18n="btn_import">⭱ Import Excel</button>
@@ -431,6 +450,7 @@ const MONTHS_LABEL_EN = {JAN:'January',FEB:'February',MAR:'March',APR:'April',MA
 
 // ---------- i18n ----------
 let LANG = 'ms';
+let THEME = 'dark';
 const I18N = {
   ms: {
     brand_title: 'Rekod Bil TNB & Air',
@@ -481,7 +501,7 @@ const I18N = {
     tab_records: '📋 Rekod',
     tab_dashboard: '📊 Dashboard',
     records_title: '📋 Rekod Tersimpan',
-    ph_search_location: '🔍 Cari lokasi...',
+    ph_search_location: '🔍 Cari lokasi atau No. Akaun...',
     opt_all_types: 'Semua Jenis',
     opt_all_years: 'Semua Tahun',
     opt_all_months: 'Semua Bulan',
@@ -570,7 +590,7 @@ const I18N = {
     tab_records: '📋 Records',
     tab_dashboard: '📊 Dashboard',
     records_title: '📋 Saved Records',
-    ph_search_location: '🔍 Search location...',
+    ph_search_location: '🔍 Search location or Account No...',
     opt_all_types: 'All Types',
     opt_all_years: 'All Years',
     opt_all_months: 'All Months',
@@ -626,6 +646,19 @@ function applyStaticI18n(){
   document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.getAttribute('data-i18n')); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = t(el.getAttribute('data-i18n-ph')); });
   document.getElementById('langBtn').textContent = '🌐 ' + t('lang_toggle');
+}
+
+// ---------- theme (dark/light) ----------
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', THEME);
+  document.getElementById('themeBtn').textContent = THEME === 'dark' ? '🌙' : '☀️';
+}
+
+async function setTheme(theme){
+  THEME = theme;
+  applyTheme();
+  try{ await window.storage.set('ui-theme', theme, false); }catch(e){}
+  if(document.getElementById('dashboardView').style.display!=='none') renderDashboard();
 }
 
 async function setLang(lang){
@@ -933,7 +966,7 @@ function renderTable(){
   if(typeFilter!=='ALL') rows = rows.filter(r=>r.type===typeFilter);
   if(yearFilter!=='ALL') rows = rows.filter(r=>String(r.year)===yearFilter);
   if(monthFilter!=='ALL') rows = rows.filter(r=>r.month===monthFilter);
-  if(search) rows = rows.filter(r=> (r.prop.address+' '+r.prop.company).toLowerCase().includes(search));
+  if(search) rows = rows.filter(r=> (r.prop.address+' '+r.prop.company+' '+(r.prop.tnbAccount||'')+' '+(r.prop.waterAccount||'')).toLowerCase().includes(search));
 
   const monthIdx = m=>MONTHS.indexOf(m);
   rows.sort((a,b)=> b.year-a.year || monthIdx(b.month)-monthIdx(a.month) || a.prop.address.localeCompare(b.prop.address));
@@ -1455,15 +1488,19 @@ function renderDashboard(){
     data:{ labels: branches, datasets: branchDatasets },
     options:{
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ labels:{ color:'#8a91a3', font:{family:"'Inter',sans-serif", size:11} } },
+      plugins:{ legend:{ labels:{ color: chartTick(), font:{family:"'Inter',sans-serif", size:11} } },
         tooltip:{ callbacks:{ label:(ctx)=> ctx.dataset.label+': '+fmtRM(ctx.raw) } } },
       scales:{
-        x:{ ticks:{ color:'#8a91a3', font:{size:11} }, grid:{ display:false } },
-        y:{ ticks:{ color:'#8a91a3', font:{size:10}, callback:(v)=>'RM '+v.toLocaleString() }, grid:{ color:'#1f2430' } }
+        x:{ ticks:{ color: chartTick(), font:{size:11} }, grid:{ display:false } },
+        y:{ ticks:{ color: chartTick(), font:{size:10}, callback:(v)=>'RM '+v.toLocaleString() }, grid:{ color: chartGrid() } }
       }
     }
   });
 }
+
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function chartTick(){ return cssVar('--chart-tick'); }
+function chartGrid(){ return cssVar('--chart-grid'); }
 
 function sumOrNull(arr){ let s=0, any=false; arr.forEach(v=>{ if(v!==null && v!==undefined && !isNaN(v)){ s+=v; any=true; } }); return any? s : null; }
 
@@ -1479,8 +1516,8 @@ function dashLineOptions(unitPrefix){
     plugins:{ legend:{ display:false },
       tooltip:{ callbacks:{ label:(ctx)=> ctx.dataset.label+': '+fmtRM(ctx.raw) } } },
     scales:{
-      x:{ ticks:{ color:'#8a91a3', font:{size:11} }, grid:{ display:false } },
-      y:{ ticks:{ color:'#8a91a3', font:{size:10}, callback:(v)=>'RM '+v.toLocaleString() }, grid:{ color:'#1f2430' } }
+      x:{ ticks:{ color: chartTick(), font:{size:11} }, grid:{ display:false } },
+      y:{ ticks:{ color: chartTick(), font:{size:10}, callback:(v)=>'RM '+v.toLocaleString() }, grid:{ color: chartGrid() } }
     }
   };
 }
@@ -1490,6 +1527,11 @@ async function init(){
     const res = await window.storage.get('ui-lang', false);
     if(res && res.value && I18N[res.value]) LANG = res.value;
   }catch(e){}
+  try{
+    const res2 = await window.storage.get('ui-theme', false);
+    if(res2 && (res2.value === 'dark' || res2.value === 'light')) THEME = res2.value;
+  }catch(e){}
+  applyTheme();
   applyStaticI18n();
   populateMonthSelect();
   await loadData();
@@ -1499,6 +1541,7 @@ async function init(){
   renderTable();
   document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
 
+  document.getElementById('themeBtn').addEventListener('click', ()=>{ setTheme(THEME==='dark' ? 'light' : 'dark'); });
   document.getElementById('langBtn').addEventListener('click', ()=>{ setLang(LANG==='ms' ? 'en' : 'ms'); });
   document.getElementById('recordForm').addEventListener('submit', handleSubmit);
   document.getElementById('resetBtn').addEventListener('click', ()=>resetForm(false));
