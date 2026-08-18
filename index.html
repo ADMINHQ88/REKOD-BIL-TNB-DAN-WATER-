@@ -6,6 +6,8 @@
 <title>Rekod Bil TNB & Air — SWIS Resources Group</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -105,6 +107,81 @@ html,body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--
 .toggle-opt.active[data-val="elec"]{ background:var(--elec-dim); color:var(--elec); border-color:var(--elec); }
 .toggle-opt.active[data-val="water"]{ background:var(--water-dim); color:var(--water); border-color:var(--water); }
 
+.mode-toggle{ display:flex; gap:4px; background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:3px; }
+.mode-opt{ background:transparent; border:none; color:var(--muted); padding:6px 12px; border-radius:6px;
+  font-size:12px; font-weight:600; font-family:var(--sans); cursor:pointer; }
+.mode-opt.active{ background:var(--panel); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+
+.property-cards-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:14px; }
+.property-card{
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+  padding:16px; cursor:pointer; transition:border-color .15s, transform .15s;
+  display:flex; flex-direction:column; gap:10px;
+}
+.property-card:hover{ border-color:var(--elec); transform:translateY(-2px); }
+.property-card .pc-head{ display:flex; align-items:flex-start; gap:10px; }
+.property-card .pc-icon{
+  width:36px; height:36px; flex-shrink:0; border-radius:8px; display:flex; align-items:center; justify-content:center;
+  font-size:17px; background:linear-gradient(135deg,var(--elec-dim),var(--water-dim));
+}
+.property-card .pc-title{ min-width:0; flex:1; }
+.property-card .pc-addr{ font-size:12.5px; font-weight:700; line-height:1.35; display:-webkit-box;
+  -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.property-card .pc-sub{ font-size:11px; color:var(--muted); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.property-card .pc-stat-row{ display:flex; align-items:flex-end; justify-content:space-between; gap:8px; }
+.property-card .pc-cost{ font-family:var(--mono); font-size:20px; font-weight:700; }
+.property-card .pc-cost small{ font-size:10.5px; color:var(--muted); font-weight:500; font-family:var(--sans); }
+.property-card .pc-badge{ font-family:var(--mono); font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px; white-space:nowrap; }
+.property-card .pc-badge.up{ color:var(--up); background:color-mix(in srgb, var(--up) 15%, transparent); }
+.property-card .pc-badge.down{ color:var(--down); background:color-mix(in srgb, var(--down) 15%, transparent); }
+.property-card .pc-badge.flat{ color:var(--muted); background:var(--panel-2); }
+.property-card .pc-spark{ width:100%; height:34px; display:block; }
+.property-card .pc-spark-label{ font-size:9.5px; color:var(--muted-2); font-family:var(--mono); text-transform:uppercase; letter-spacing:.03em; }
+.property-card .pc-badges-row{ display:flex; gap:6px; flex-wrap:wrap; }
+.property-card .pc-tag{ font-size:10px; font-family:var(--mono); color:var(--muted); background:var(--panel-2); padding:2px 7px; border-radius:5px; }
+
+.heatmap-grid{ display:flex; flex-direction:column; gap:10px; }
+.heatmap-card{
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px 16px; cursor:pointer; transition:border-color .15s;
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+}
+.heatmap-card:hover{ border-color:var(--elec); }
+.hm-info{ min-width:190px; flex:1; }
+.hm-addr{ font-size:12.5px; font-weight:700; line-height:1.3; overflow:hidden; text-overflow:ellipsis;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.hm-sub{ font-size:11px; color:var(--muted); margin-top:3px; }
+.hm-total{ font-family:var(--mono); font-size:11.5px; color:var(--muted); margin-top:5px; }
+.hm-total b{ color:var(--text); font-size:13px; }
+.hm-row{ display:flex; gap:4px; }
+.hm-cell{
+  width:26px; height:26px; border-radius:5px; position:relative;
+  border:1px solid var(--border); flex-shrink:0;
+}
+.hm-cell.empty{ background:var(--panel-2) !important; border-style:dashed; }
+.hm-cell-label{ position:absolute; bottom:-15px; left:50%; transform:translateX(-50%);
+  font-size:8px; color:var(--muted-2); font-family:var(--mono); white-space:nowrap; }
+@media(max-width:700px){
+  .heatmap-card{ flex-direction:column; align-items:stretch; }
+  .hm-row{ overflow-x:auto; padding-bottom:14px; }
+}
+
+.map-view{ display:flex; flex-direction:column; gap:14px; }
+#leafletMap{ width:100%; height:480px; border-radius:var(--radius); border:1px solid var(--border); background:var(--panel-2); }
+.leaflet-popup-content-wrapper{ background:var(--panel); color:var(--text); border-radius:8px; }
+.leaflet-popup-tip{ background:var(--panel); }
+.map-popup{ font-family:var(--sans); font-size:12px; min-width:170px; }
+.map-popup .mp-addr{ font-weight:700; margin-bottom:4px; }
+.map-popup .mp-sub{ color:var(--muted); font-size:11px; margin-bottom:6px; }
+.map-popup .mp-cost{ font-family:var(--mono); font-weight:700; font-size:13px; margin-bottom:8px; }
+.map-popup .mp-link{ display:inline-block; font-size:11px; color:var(--elec); cursor:pointer; text-decoration:underline; background:none; border:none; padding:0; font-family:var(--sans); }
+.map-missing-list{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+.map-missing-list h4{ margin:0 0 10px; font-size:12.5px; color:var(--muted); font-weight:700; }
+.map-missing-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid var(--panel-2); font-size:12px; }
+.map-missing-row:last-child{ border-bottom:none; }
+.map-missing-row .mm-addr{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.map-missing-row .mm-status{ font-size:10.5px; color:var(--muted-2); font-family:var(--mono); min-width:80px; text-align:right; }
+
 .compare-box{
   background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px;
   font-size:12px; font-family:var(--mono); margin-bottom:12px; color:var(--muted); line-height:1.6;
@@ -156,6 +233,15 @@ html,body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--
   border-radius:7px; padding:7px 10px; font-size:12.5px; font-family:var(--sans); outline:none;
 }
 .table-scroll{ overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); }
+.table-pagination{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:12px; }
+.table-pagination .tp-info{ font-size:11.5px; color:var(--muted); }
+.table-pagination .tp-btns{ display:flex; align-items:center; gap:6px; }
+.tp-btn{ background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:6px;
+  padding:6px 11px; font-size:12px; font-weight:600; cursor:pointer; font-family:var(--sans); }
+.tp-btn:hover:not(:disabled){ border-color:var(--elec); }
+.tp-btn:disabled{ opacity:.4; cursor:not-allowed; }
+.tp-btn.active{ background:var(--elec-dim); color:var(--elec); border-color:var(--elec); }
+.tp-page-num{ min-width:30px; text-align:center; }
 table.data-table{ width:100%; border-collapse:collapse; font-size:12px; min-width:900px; }
 table.data-table th{
   text-align:right; font-weight:600; color:var(--muted); font-size:10px; text-transform:uppercase;
@@ -192,6 +278,34 @@ table.data-table tr:hover td{ background:var(--hover-bg); }
 .import-errors div{ margin-bottom:4px; }
 .close-x{ background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:2px 6px; }
 .close-x:hover{ color:var(--text); }
+
+.receipt-box{ max-width:340px; }
+.receipt-body{ padding:22px 22px 8px; font-family:var(--mono); }
+.receipt-top{ text-align:center; margin-bottom:14px; }
+.receipt-icon{ width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:20px; margin:0 auto 8px; }
+.receipt-icon.elec{ background:var(--elec-dim); }
+.receipt-icon.water{ background:var(--water-dim); }
+.receipt-provider{ font-size:13px; font-weight:700; letter-spacing:.04em; }
+.receipt-sub{ font-size:10px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:.05em; }
+.receipt-dashed{ border-top:1px dashed var(--border); margin:12px 0; }
+.receipt-row{ display:flex; justify-content:space-between; gap:10px; font-size:11.5px; padding:4px 0; }
+.receipt-row .rk{ color:var(--muted); }
+.receipt-row .rv{ text-align:right; font-weight:600; word-break:break-word; }
+.receipt-cost{ text-align:center; margin:16px 0; }
+.receipt-cost .rc-label{ font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.receipt-cost .rc-val{ font-size:30px; font-weight:800; font-family:var(--mono); margin-top:2px; }
+.receipt-remarks{ font-size:11px; color:var(--muted); font-style:italic; text-align:center; margin-top:6px; }
+.receipt-qr{ display:flex; justify-content:center; margin:16px 0 6px; }
+.receipt-qr img{ width:96px; height:96px; border-radius:6px; background:#fff; padding:6px; }
+.receipt-footer-note{ text-align:center; font-size:9.5px; color:var(--muted-2); margin:8px 0 16px; }
+@media print{
+  body > *:not(.modal-backdrop){ display:none !important; }
+  .modal-backdrop{ position:static; background:none; padding:0; }
+  .modal-backdrop > *:not(.receipt-box){ display:none !important; }
+  .receipt-box{ box-shadow:none; border:none; max-width:100%; }
+  .modal-foot{ display:none !important; }
+}
 
 .prop-suggest-wrap{ position:relative; }
 .prop-suggest{ position:absolute; top:100%; left:0; right:0; background:var(--panel); border:1px solid var(--border);
@@ -254,6 +368,13 @@ table.data-table tr:hover td{ background:var(--hover-bg); }
             <div class="field"><label data-i18n="label_provider">Pembekal Air</label><input id="npProvider" type="text" data-i18n-ph="ph_provider" placeholder="cth: SYABAS" /></div>
             <div class="field"><label data-i18n="label_billing_period">Tempoh Bil</label><input id="npBillingPeriod" type="text" data-i18n-ph="ph_billing_period" placeholder="cth: 1st - 31st" /></div>
           </div>
+          <div class="field-grid">
+            <div class="field"><label data-i18n="label_lat">Latitud</label><input id="npLat" type="number" step="any" /></div>
+            <div class="field"><label data-i18n="label_lng">Longitud</label><input id="npLng" type="number" step="any" /></div>
+            <div class="field" style="justify-content:flex-end;">
+              <button type="button" class="btn ghost small" id="npGeocodeBtn" style="width:100%;" data-i18n="btn_geocode">📍 Auto-cari koordinat</button>
+            </div>
+          </div>
         </div>
 
         <div class="field-grid">
@@ -310,6 +431,12 @@ table.data-table tr:hover td{ background:var(--hover-bg); }
         <div class="table-head">
           <h2 class="panel-title" data-i18n="records_title">📋 Rekod Tersimpan</h2>
           <div class="table-filters">
+            <div class="mode-toggle" id="recordsModeToggle">
+              <button type="button" class="mode-opt active" data-mode="table" data-i18n="view_table_mode">🗂️ Jadual</button>
+              <button type="button" class="mode-opt" data-mode="cards" data-i18n="view_cards_mode">🪪 Kad</button>
+              <button type="button" class="mode-opt" data-mode="heatmap" data-i18n="view_heatmap_mode">🔥 Heatmap</button>
+              <button type="button" class="mode-opt" data-mode="map" data-i18n="view_map_mode">🗺️ Peta</button>
+            </div>
             <input id="filterSearch" type="text" data-i18n-ph="ph_search_location" placeholder="Cari lokasi..." />
             <select id="filterType">
               <option value="ALL" data-i18n="opt_all_types">Semua Jenis</option>
@@ -320,7 +447,7 @@ table.data-table tr:hover td{ background:var(--hover-bg); }
             <select id="filterMonth"></select>
           </div>
         </div>
-        <div class="table-scroll">
+        <div class="table-scroll" id="tableScrollWrap">
           <table class="data-table" id="recordsTable">
             <thead><tr>
               <th data-i18n="th_location">Lokasi</th><th data-i18n="th_type">Jenis</th><th data-i18n="th_company">Syarikat</th><th data-i18n="th_branch">Cawangan</th><th data-i18n="th_usage">Kegunaan</th><th data-i18n="th_account">No. Akaun</th><th data-i18n="th_month">Bulan</th><th data-i18n="th_year">Tahun</th>
@@ -329,6 +456,16 @@ table.data-table tr:hover td{ background:var(--hover-bg); }
             </tr></thead>
             <tbody id="recordsBody"></tbody>
           </table>
+        </div>
+        <div class="table-pagination" id="tablePagination"></div>
+        <div class="property-cards-grid" id="propertyCardsGrid" style="display:none;"></div>
+        <div class="table-pagination" id="cardsPagination" style="display:none;"></div>
+        <div class="heatmap-grid" id="propertyHeatmapGrid" style="display:none;"></div>
+        <div class="table-pagination" id="heatmapPagination" style="display:none;"></div>
+        <div class="map-view" id="propertyMapView" style="display:none;">
+          <div id="leafletMap"></div>
+          <div id="mapMissingCoords" class="map-missing-list"></div>
+          <div class="table-pagination" id="mapMissingPagination"></div>
         </div>
         <div class="empty-note" id="emptyNote" style="display:none;" data-i18n="empty_note_search">Tiada rekod sepadan carian.</div>
       </div>
@@ -367,7 +504,8 @@ async function supabaseLoadAppData(){
   const properties = props.map(p => ({
     id: p.id, address: p.address, company: p.company || '', branch: p.branch || '',
     usage: p.usage || '', tariff: p.tariff || '', provider: p.provider || '',
-    billingPeriod: p.billing_period || '', tnbAccount: p.tnb_account || '', waterAccount: p.water_account || ''
+    billingPeriod: p.billing_period || '', tnbAccount: p.tnb_account || '', waterAccount: p.water_account || '',
+    lat: p.lat ?? null, lng: p.lng ?? null
   }));
   const records = {};
   (recs || []).forEach(r => {
@@ -385,7 +523,8 @@ async function supabaseSaveAppData(value){
     const rows = parsed.properties.map(p => ({
       id: p.id, address: p.address, company: p.company || '', branch: p.branch || '',
       usage: p.usage || '', tariff: p.tariff || '', provider: p.provider || '',
-      billing_period: p.billingPeriod || '', tnb_account: p.tnbAccount || '', water_account: p.waterAccount || ''
+      billing_period: p.billingPeriod || '', tnb_account: p.tnbAccount || '', water_account: p.waterAccount || '',
+      lat: p.lat ?? null, lng: p.lng ?? null
     }));
     const { error } = await supabaseClient.from('properties').insert(rows);
     if (error) throw error;
@@ -505,6 +644,25 @@ const I18N = {
     opt_all_types: 'Semua Jenis',
     opt_all_years: 'Semua Tahun',
     opt_all_months: 'Semua Bulan',
+    view_table_mode: '🗂️ Jadual',
+    view_cards_mode: '🪪 Kad',
+    spark_label: '6 bulan terakhir',
+    view_heatmap_mode: '🔥 Heatmap',
+    heatmap_total_label: 'Jumlah {year}:',
+    view_map_mode: '🗺️ Peta',
+    label_lat: 'Latitud',
+    label_lng: 'Longitud',
+    btn_geocode: '📍 Auto-cari koordinat',
+    btn_geocode_short: 'Cari',
+    map_view_table_link: 'Lihat dalam Jadual →',
+    map_missing_title: '{n} lokasi belum ada koordinat',
+    map_searching: 'Mencari...',
+    map_found: '✓ Dijumpai',
+    map_not_found: '✗ Tidak dijumpai',
+    tp_showing_all: 'Memaparkan semua {n} rekod',
+    tp_showing_range: 'Memaparkan {from}–{to} daripada {total} rekod',
+    tp_prev: 'Sebelum',
+    tp_next: 'Seterus',
     opt_all_branches: 'Semua Cawangan',
     th_location: '📍 Lokasi', th_type: 'Jenis', th_company: '🏢 Syarikat', th_branch: '🏬 Cawangan',
     th_usage: '🗂️ Kegunaan', th_account: '🔢 No. Akaun', th_month: '📅 Bulan', th_year: '🗓️ Tahun',
@@ -513,7 +671,7 @@ const I18N = {
     empty_note_search: 'Tiada rekod sepadan carian.',
     empty_note_dash: 'Tiada rekod untuk dipaparkan.',
     empty_note_ranking: 'Tiada data.',
-    title_edit: 'Edit', title_delete: 'Padam', confirm_delete: 'Padam rekod ini?',
+    title_edit: 'Edit', title_delete: 'Padam', title_receipt: 'Lihat Resit', confirm_delete: 'Padam rekod ini?',
     dash_overview: '📊 Gambaran Keseluruhan',
     card_elec_cost: '⚡ Kos Elektrik {year} (YTD)',
     card_water_cost: '💧 Kos Air {year} (YTD)',
@@ -533,6 +691,9 @@ const I18N = {
     import_no_errors: 'Semua baris berjaya diproses tanpa ralat.',
     import_more_errors: '...dan {n} lagi.',
     btn_ok: 'OK',
+    btn_print: 'Cetak',
+    receipt_title: 'Resit Rekod Bil',
+    receipt_footer_note: 'Resit ini dijana automatik dari Sistem Rekod Bil TNB & Air',
     err_missing_columns: 'Lajur wajib tidak dijumpai. Pastikan fail ada lajur: Lokasi, Tahun, Bulan, Kos. Muat turun templat untuk format yang betul.',
     err_empty_file: 'Fail kosong atau tiada baris data.',
     err_read_fail: 'Gagal baca fail: {msg}',
@@ -594,6 +755,25 @@ const I18N = {
     opt_all_types: 'All Types',
     opt_all_years: 'All Years',
     opt_all_months: 'All Months',
+    view_table_mode: '🗂️ Table',
+    view_cards_mode: '🪪 Cards',
+    spark_label: 'Last 6 months',
+    view_heatmap_mode: '🔥 Heatmap',
+    heatmap_total_label: 'Total {year}:',
+    view_map_mode: '🗺️ Map',
+    label_lat: 'Latitude',
+    label_lng: 'Longitude',
+    btn_geocode: '📍 Auto-locate coordinates',
+    btn_geocode_short: 'Locate',
+    map_view_table_link: 'View in Table →',
+    map_missing_title: '{n} locations missing coordinates',
+    map_searching: 'Searching...',
+    map_found: '✓ Found',
+    map_not_found: '✗ Not found',
+    tp_showing_all: 'Showing all {n} records',
+    tp_showing_range: 'Showing {from}–{to} of {total} records',
+    tp_prev: 'Prev',
+    tp_next: 'Next',
     opt_all_branches: 'All Branches',
     th_location: '📍 Location', th_type: 'Type', th_company: '🏢 Company', th_branch: '🏬 Branch',
     th_usage: '🗂️ Usage', th_account: '🔢 Account No.', th_month: '📅 Month', th_year: '🗓️ Year',
@@ -602,7 +782,7 @@ const I18N = {
     empty_note_search: 'No records match your search.',
     empty_note_dash: 'No records to display.',
     empty_note_ranking: 'No data.',
-    title_edit: 'Edit', title_delete: 'Delete', confirm_delete: 'Delete this record?',
+    title_edit: 'Edit', title_delete: 'Delete', title_receipt: 'View Receipt', confirm_delete: 'Delete this record?',
     dash_overview: '📊 Overview',
     card_elec_cost: '⚡ Electricity Cost {year} (YTD)',
     card_water_cost: '💧 Water Cost {year} (YTD)',
@@ -622,6 +802,9 @@ const I18N = {
     import_no_errors: 'All rows processed successfully with no errors.',
     import_more_errors: '...and {n} more.',
     btn_ok: 'OK',
+    btn_print: 'Print',
+    receipt_title: 'Bill Record Receipt',
+    receipt_footer_note: 'This receipt was auto-generated by the TNB & Water Bill Records System',
     err_missing_columns: 'Required columns not found. Make sure the file has columns: Location, Year, Month, Cost. Download the template for the correct format.',
     err_empty_file: 'File is empty or has no data rows.',
     err_read_fail: 'Failed to read file: {msg}',
@@ -672,7 +855,7 @@ async function setLang(lang){
   updateReadingLabel();
   if(editingKey===null) resetForm(true);
   document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
-  renderTable();
+  refreshRecordsView();
   if(document.getElementById('dashboardView').style.display!=='none') renderDashboard();
 }
 
@@ -844,6 +1027,8 @@ async function handleSubmit(e){
       billingPeriod: document.getElementById('npBillingPeriod').value.trim(),
       tnbAccount: document.getElementById('npTnbAcc').value.trim(),
       waterAccount: document.getElementById('npWaterAcc').value.trim(),
+      lat: document.getElementById('npLat').value ? parseFloat(document.getElementById('npLat').value) : null,
+      lng: document.getElementById('npLng').value ? parseFloat(document.getElementById('npLng').value) : null,
     };
     DATA.properties.push(prop);
   }
@@ -864,7 +1049,7 @@ async function handleSubmit(e){
 
   await persist();
   populateFilterYears();
-  renderTable();
+  refreshRecordsView();
 
   const msg = document.getElementById('saveMsg');
   msg.style.color = 'var(--down)';
@@ -923,7 +1108,7 @@ async function deleteRecord(key){
   if(!confirm(t('confirm_delete'))) return;
   delete DATA.records[key];
   await persist();
-  renderTable();
+  refreshRecordsView();
   if(document.getElementById('dashboardView').style.display!=='none') renderDashboard();
 }
 
@@ -950,6 +1135,53 @@ function populateFilterMonthOptions(){
   sel.value = cur || 'ALL';
 }
 
+let tablePage = 1;
+let cardsPage = 1;
+let heatmapPage = 1;
+let mapMissingPage = 1;
+const PAGE_SIZE = 50;
+const TABLE_PAGE_SIZE = PAGE_SIZE;
+
+function renderPaginationBar(containerEl, page, totalItems, pageSize, gotoCallback){
+  if(!containerEl) return;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  if(totalPages<=1){
+    containerEl.innerHTML = `<div class="tp-info">${t('tp_showing_all',{n:totalItems})}</div>`;
+    return;
+  }
+  const startIdx = (page-1)*pageSize + 1;
+  const endIdx = Math.min(page*pageSize, totalItems);
+
+  let pageNums = [];
+  if(totalPages<=7){
+    pageNums = Array.from({length:totalPages}, (_,i)=>i+1);
+  } else {
+    const set = new Set([1,2,totalPages-1,totalPages,page-1,page,page+1]);
+    pageNums = Array.from(set).filter(n=>n>=1 && n<=totalPages).sort((a,b)=>a-b);
+  }
+  let btnsHtml = `<button class="tp-btn" data-pg-prev ${page===1?'disabled':''}>‹ ${t('tp_prev')}</button>`;
+  let prevN = 0;
+  pageNums.forEach(n=>{
+    if(prevN && n-prevN>1) btnsHtml += `<span class="tp-info">…</span>`;
+    btnsHtml += `<button class="tp-btn tp-page-num ${n===page?'active':''}" data-pg="${n}">${n}</button>`;
+    prevN = n;
+  });
+  btnsHtml += `<button class="tp-btn" data-pg-next ${page===totalPages?'disabled':''}>${t('tp_next')} ›</button>`;
+
+  containerEl.innerHTML = `
+    <div class="tp-info">${t('tp_showing_range',{from:startIdx, to:endIdx, total:totalItems})}</div>
+    <div class="tp-btns">${btnsHtml}</div>
+  `;
+  const prevBtn = containerEl.querySelector('[data-pg-prev]');
+  const nextBtn = containerEl.querySelector('[data-pg-next]');
+  if(prevBtn) prevBtn.addEventListener('click', ()=> gotoCallback(page-1));
+  if(nextBtn) nextBtn.addEventListener('click', ()=> gotoCallback(page+1));
+  containerEl.querySelectorAll('[data-pg]').forEach(b=>{
+    b.addEventListener('click', ()=> gotoCallback(parseInt(b.getAttribute('data-pg'))));
+  });
+}
+
+
 function renderTable(){
   const search = document.getElementById('filterSearch').value.trim().toLowerCase();
   const typeFilter = document.getElementById('filterType').value;
@@ -973,13 +1205,20 @@ function renderTable(){
 
   const tbody = document.getElementById('recordsBody');
   const emptyNote = document.getElementById('emptyNote');
+  const pagerEl = document.getElementById('tablePagination');
 
   if(rows.length===0){
-    tbody.innerHTML=''; emptyNote.style.display='block'; return;
+    tbody.innerHTML=''; emptyNote.style.display='block'; pagerEl.innerHTML=''; return;
   }
   emptyNote.style.display='none';
 
-  tbody.innerHTML = rows.map(r=>{
+  const totalPages = Math.max(1, Math.ceil(rows.length / TABLE_PAGE_SIZE));
+  if(tablePage > totalPages) tablePage = totalPages;
+  if(tablePage < 1) tablePage = 1;
+  const startIdx = (tablePage-1) * TABLE_PAGE_SIZE;
+  const pageRows = rows.slice(startIdx, startIdx + TABLE_PAGE_SIZE);
+
+  tbody.innerHTML = pageRows.map(r=>{
     const prevKey = `${r.prop.id}_${r.type}_${r.year-1}_${r.month}`;
     const prevRec = DATA.records[prevKey];
     const cd = prevRec ? pctDelta(prevRec.cost, r.rec.cost) : null;
@@ -1001,14 +1240,372 @@ function renderTable(){
       <td class="${deltaClass(cd)}">${deltaArrow(cd)}</td>
       <td class="remark-cell" title="${esc(r.rec.remarks)}">${esc(r.rec.remarks)}</td>
       <td><div class="row-actions">
+        <button class="icon-btn" title="${t('title_receipt')}" data-receipt="${r.key}">🧾</button>
         <button class="icon-btn" title="${t('title_edit')}" data-edit="${r.key}">✎</button>
         <button class="icon-btn" title="${t('title_delete')}" data-del="${r.key}">🗑</button>
       </div></td>
     </tr>`;
   }).join('');
 
+  renderTablePagination(rows.length, totalPages);
+
   tbody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>editRecord(b.getAttribute('data-edit'))));
   tbody.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>deleteRecord(b.getAttribute('data-del'))));
+  tbody.querySelectorAll('[data-receipt]').forEach(b=>b.addEventListener('click', ()=>showReceipt(b.getAttribute('data-receipt'))));
+}
+
+function renderTablePagination(totalRows, totalPages){
+  const pagerEl = document.getElementById('tablePagination');
+  renderPaginationBar(pagerEl, tablePage, totalRows, TABLE_PAGE_SIZE, (n)=>{ tablePage = n; renderTable(); });
+}
+
+// ---------- records view mode (table / cards) ----------
+let recordsMode = 'table';
+
+function refreshRecordsView(){
+  renderTable();
+  document.getElementById('tableScrollWrap').style.display = recordsMode==='table' ? 'block' : 'none';
+  document.getElementById('propertyCardsGrid').style.display = recordsMode==='cards' ? 'grid' : 'none';
+  document.getElementById('propertyHeatmapGrid').style.display = recordsMode==='heatmap' ? 'flex' : 'none';
+  document.getElementById('propertyMapView').style.display = recordsMode==='map' ? 'flex' : 'none';
+  if(recordsMode==='cards') renderPropertyCards();
+  if(recordsMode==='heatmap') renderPropertyHeatmap();
+  if(recordsMode==='map') renderPropertyMap();
+}
+
+function setRecordsMode(mode){
+  recordsMode = mode;
+  document.querySelectorAll('.mode-opt').forEach(b=>b.classList.toggle('active', b.getAttribute('data-mode')===mode));
+  refreshRecordsView();
+}
+
+function last6MonthSlots(){
+  const keys = Object.keys(DATA.records).map(k=>{
+    const parts = k.split('_');
+    return { year: parseInt(parts[2]), month: parts[3] };
+  });
+  const uniq = new Map();
+  keys.forEach(k=>{ uniq.set(`${k.year}_${k.month}`, k); });
+  const list = Array.from(uniq.values());
+  const monthIdx = m=>MONTHS.indexOf(m);
+  list.sort((a,b)=> a.year-b.year || monthIdx(a.month)-monthIdx(b.month));
+  return list.slice(-6);
+}
+
+function sparklineSVG(values, color){
+  const w = 100, h = 30, pad = 3;
+  const valid = values.map((v,i)=>({v,i})).filter(x=>x.v!==null && x.v!==undefined);
+  if(valid.length < 2){
+    return `<svg class="pc-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><line x1="0" y1="${h-pad}" x2="${w}" y2="${h-pad}" stroke="var(--border)" stroke-width="1.5"/></svg>`;
+  }
+  const vals = valid.map(x=>x.v);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = (max - min) || 1;
+  const n = values.length;
+  const stepX = n>1 ? (w - pad*2) / (n-1) : 0;
+  const pts = values.map((v,i)=>{
+    const x = pad + stepX*i;
+    if(v===null || v===undefined) return null;
+    const y = h - pad - ((v - min)/range) * (h - pad*2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const validPts = pts.filter(p=>p!==null).join(' ');
+  const lastIdx = values.map((v,i)=>v!==null?i:-1).filter(i=>i>=0).pop();
+  const lastPt = pts[lastIdx];
+  return `<svg class="pc-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polyline points="${validPts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${lastPt ? `<circle cx="${lastPt.split(',')[0]}" cy="${lastPt.split(',')[1]}" r="2.5" fill="${color}"/>` : ''}
+  </svg>`;
+}
+
+function renderPropertyCards(){
+  const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+  const typeFilter = document.getElementById('filterType').value;
+  const grid = document.getElementById('propertyCardsGrid');
+  const emptyNote = document.getElementById('emptyNote');
+  const slots = last6MonthSlots();
+
+  let props = DATA.properties.filter(p=>{
+    const hay = (p.address+' '+p.company+' '+(p.tnbAccount||'')+' '+(p.waterAccount||'')).toLowerCase();
+    return !search || hay.includes(search);
+  });
+
+  const cards = props.map(p=>{
+    const useType = typeFilter!=='ALL' ? typeFilter : (
+      // pilih jenis yang ada data terkini untuk property ni; default elec
+      slots.some(s=>recVal(p.id,'water',s.year,s.month,'cost')!==null) &&
+      !slots.some(s=>recVal(p.id,'elec',s.year,s.month,'cost')!==null) ? 'water' : 'elec'
+    );
+    const series = slots.map(s=> recVal(p.id, useType, s.year, s.month, 'cost'));
+    const validIdx = series.map((v,i)=>v!==null?i:-1).filter(i=>i>=0);
+    if(validIdx.length===0) return null;
+    const lastIdx = validIdx[validIdx.length-1];
+    const prevIdx = validIdx.length>1 ? validIdx[validIdx.length-2] : null;
+    const lastVal = series[lastIdx];
+    const prevVal = prevIdx!==null ? series[prevIdx] : null;
+    const cd = prevVal!==null ? pctDelta(prevVal, lastVal) : null;
+    const color = useType==='elec' ? 'var(--elec)' : 'var(--water)';
+    const accNo = useType==='elec' ? p.tnbAccount : p.waterAccount;
+    return { p, useType, lastVal, cd, series, color, accNo, lastSlot: slots[lastIdx] };
+  }).filter(Boolean);
+
+  cards.sort((a,b)=> b.lastVal - a.lastVal);
+
+  if(cards.length===0){
+    grid.innerHTML = '';
+    document.getElementById('cardsPagination').style.display = 'none';
+    emptyNote.style.display = 'block';
+    return;
+  }
+  emptyNote.style.display = 'none';
+  document.getElementById('cardsPagination').style.display = 'flex';
+
+  const totalPages = Math.max(1, Math.ceil(cards.length / PAGE_SIZE));
+  if(cardsPage > totalPages) cardsPage = totalPages;
+  if(cardsPage < 1) cardsPage = 1;
+  const pageCards = cards.slice((cardsPage-1)*PAGE_SIZE, cardsPage*PAGE_SIZE);
+
+  grid.innerHTML = pageCards.map(c=>{
+    const icon = c.useType==='elec' ? '⚡' : '💧';
+    const badgeClass = deltaClass(c.cd);
+    return `<div class="property-card" data-addr="${esc(c.p.address)}">
+      <div class="pc-head">
+        <div class="pc-icon">${icon}</div>
+        <div class="pc-title">
+          <div class="pc-addr" title="${esc(c.p.address)}">${esc(c.p.address)}</div>
+          <div class="pc-sub">${esc(c.p.company || c.p.branch || '—')}</div>
+        </div>
+      </div>
+      <div class="pc-stat-row">
+        <div class="pc-cost">${fmtRM(c.lastVal)}<br/><small>${c.lastSlot ? monthLabel(c.lastSlot.month)+' '+c.lastSlot.year : ''}</small></div>
+        <span class="pc-badge ${badgeClass}">${deltaArrow(c.cd)}</span>
+      </div>
+      <div>
+        ${sparklineSVG(c.series, c.color)}
+        <div class="pc-spark-label">${t('spark_label')}</div>
+      </div>
+      <div class="pc-badges-row">
+        ${c.p.branch ? `<span class="pc-tag">🏬 ${esc(c.p.branch)}</span>` : ''}
+        ${c.accNo ? `<span class="pc-tag">🔢 ${esc(c.accNo)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.property-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      setRecordsMode('table');
+      document.getElementById('filterSearch').value = card.getAttribute('data-addr');
+      refreshRecordsView();
+    });
+  });
+
+  renderPaginationBar(document.getElementById('cardsPagination'), cardsPage, cards.length, PAGE_SIZE, (n)=>{ cardsPage=n; renderPropertyCards(); });
+}
+
+function renderPropertyHeatmap(){
+  const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+  const typeFilter = document.getElementById('filterType').value;
+  const yearFilter = document.getElementById('filterYear').value;
+  const grid = document.getElementById('propertyHeatmapGrid');
+  const emptyNote = document.getElementById('emptyNote');
+
+  const years = allYearsInData();
+  const targetYear = (yearFilter!=='ALL') ? parseInt(yearFilter) : (years.length ? years[years.length-1] : new Date().getFullYear());
+
+  let props = DATA.properties.filter(p=>{
+    const hay = (p.address+' '+p.company+' '+(p.tnbAccount||'')+' '+(p.waterAccount||'')).toLowerCase();
+    return !search || hay.includes(search);
+  });
+
+  const entries = props.map(p=>{
+    const useType = typeFilter!=='ALL' ? typeFilter : (
+      MONTHS.some(m=>recVal(p.id,'water',targetYear,m,'cost')!==null) &&
+      !MONTHS.some(m=>recVal(p.id,'elec',targetYear,m,'cost')!==null) ? 'water' : 'elec'
+    );
+    const series = MONTHS.map(m=> recVal(p.id, useType, targetYear, m, 'cost'));
+    const hasAny = series.some(v=>v!==null);
+    if(!hasAny) return null;
+    const total = sumOrNull(series);
+    return { p, useType, series, total };
+  }).filter(Boolean);
+
+  entries.sort((a,b)=> b.total - a.total);
+
+  if(entries.length===0){
+    grid.innerHTML = '';
+    document.getElementById('heatmapPagination').style.display = 'none';
+    emptyNote.style.display = 'block';
+    return;
+  }
+  emptyNote.style.display = 'none';
+  document.getElementById('heatmapPagination').style.display = 'flex';
+
+  const globalMax = { elec: 1, water: 1 };
+  entries.forEach(e=>{ e.series.forEach(v=>{ if(v!==null && v>globalMax[e.useType]) globalMax[e.useType]=v; }); });
+
+  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+  if(heatmapPage > totalPages) heatmapPage = totalPages;
+  if(heatmapPage < 1) heatmapPage = 1;
+  const pageEntries = entries.slice((heatmapPage-1)*PAGE_SIZE, heatmapPage*PAGE_SIZE);
+
+  grid.innerHTML = pageEntries.map(e=>{
+    const colorVar = e.useType==='elec' ? 'var(--elec)' : 'var(--water)';
+    const cells = e.series.map((v,i)=>{
+      const m = MONTHS[i];
+      const lbl = monthLabel(m).slice(0,3);
+      if(v===null){
+        return `<div class="hm-cell empty" title="${lbl}: ${t('empty_note_ranking')}"></div>`;
+      }
+      const pct = Math.min(95, Math.max(18, (v/globalMax[e.useType])*95));
+      return `<div class="hm-cell" style="background-color:color-mix(in srgb, ${colorVar} ${pct.toFixed(0)}%, var(--panel-2));" title="${lbl}: ${fmtRM(v)}"></div>`;
+    }).join('');
+    const icon = e.useType==='elec' ? '⚡' : '💧';
+    return `<div class="heatmap-card" data-addr="${esc(e.p.address)}">
+      <div class="hm-info">
+        <div class="hm-addr" title="${esc(e.p.address)}">${icon} ${esc(e.p.address)}</div>
+        <div class="hm-sub">${esc(e.p.company || e.p.branch || '—')}</div>
+        <div class="hm-total">${t('heatmap_total_label',{year:targetYear})} <b>${fmtRM(e.total)}</b></div>
+      </div>
+      <div class="hm-row">${cells}</div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.heatmap-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      setRecordsMode('table');
+      document.getElementById('filterSearch').value = card.getAttribute('data-addr');
+      refreshRecordsView();
+    });
+  });
+
+  renderPaginationBar(document.getElementById('heatmapPagination'), heatmapPage, entries.length, PAGE_SIZE, (n)=>{ heatmapPage=n; renderPropertyHeatmap(); });
+}
+
+// ---------- peta lokasi ----------
+let leafletMapInstance = null;
+let leafletMarkersLayer = null;
+
+async function geocodeAddress(address){
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=my&q=${encodeURIComponent(address)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if(!data || !data.length) return null;
+  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+}
+
+function ensureLeafletMap(){
+  if(leafletMapInstance) return leafletMapInstance;
+  leafletMapInstance = L.map('leafletMap', { scrollWheelZoom:true }).setView([4.2105, 108.9758], 6); // pusat Malaysia
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19
+  }).addTo(leafletMapInstance);
+  leafletMarkersLayer = L.layerGroup().addTo(leafletMapInstance);
+  return leafletMapInstance;
+}
+
+function renderPropertyMap(){
+  const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+  const typeFilter = document.getElementById('filterType').value;
+  const map = ensureLeafletMap();
+  leafletMarkersLayer.clearLayers();
+
+  let props = DATA.properties.filter(p=>{
+    const hay = (p.address+' '+p.company+' '+(p.tnbAccount||'')+' '+(p.waterAccount||'')).toLowerCase();
+    return !search || hay.includes(search);
+  });
+
+  const withCoords = props.filter(p=> p.lat!=null && p.lng!=null && !isNaN(p.lat) && !isNaN(p.lng));
+  const withoutCoords = props.filter(p=> p.lat==null || p.lng==null || isNaN(p.lat) || isNaN(p.lng));
+
+  const bounds = [];
+  withCoords.forEach(p=>{
+    const useType = typeFilter!=='ALL' ? typeFilter : (
+      MONTHS.some(m=>recVal(p.id,'water',new Date().getFullYear(),m,'cost')!==null) &&
+      !MONTHS.some(m=>recVal(p.id,'elec',new Date().getFullYear(),m,'cost')!==null) ? 'water' : 'elec'
+    );
+    const color = useType==='elec' ? '#f0a93b' : '#3fb6d3';
+    const slots = last6MonthSlots();
+    const series = slots.map(s=> recVal(p.id, useType, s.year, s.month, 'cost'));
+    const validIdx = series.map((v,i)=>v!==null?i:-1).filter(i=>i>=0);
+    const lastVal = validIdx.length ? series[validIdx[validIdx.length-1]] : null;
+
+    const marker = L.circleMarker([p.lat, p.lng], {
+      radius: 9, color: color, weight: 2, fillColor: color, fillOpacity: 0.55
+    });
+    const popupHtml = `<div class="map-popup">
+      <div class="mp-addr">${esc(p.address)}</div>
+      <div class="mp-sub">${esc(p.company || p.branch || '—')}</div>
+      <div class="mp-cost">${lastVal!==null ? fmtRM(lastVal) : t('empty_note_ranking')}</div>
+      <button class="mp-link" data-addr="${esc(p.address)}">${t('map_view_table_link')}</button>
+    </div>`;
+    marker.bindPopup(popupHtml);
+    marker.on('popupopen', (e)=>{
+      const el = e.popup.getElement().querySelector('.mp-link');
+      if(el) el.addEventListener('click', ()=>{
+        setRecordsMode('table');
+        document.getElementById('filterSearch').value = p.address;
+        refreshRecordsView();
+      });
+    });
+    marker.addTo(leafletMarkersLayer);
+    bounds.push([p.lat, p.lng]);
+  });
+
+  if(bounds.length){
+    map.fitBounds(bounds, { padding:[30,30], maxZoom:14 });
+  }
+  setTimeout(()=>{ map.invalidateSize(); if(bounds.length) map.fitBounds(bounds, { padding:[30,30], maxZoom:14 }); }, 50);
+
+  const missingEl = document.getElementById('mapMissingCoords');
+  if(withoutCoords.length===0){
+    missingEl.innerHTML = '';
+    missingEl.style.display = 'none';
+    document.getElementById('mapMissingPagination').style.display = 'none';
+  } else {
+    missingEl.style.display = 'block';
+    document.getElementById('mapMissingPagination').style.display = 'flex';
+
+    const totalPages = Math.max(1, Math.ceil(withoutCoords.length / PAGE_SIZE));
+    if(mapMissingPage > totalPages) mapMissingPage = totalPages;
+    if(mapMissingPage < 1) mapMissingPage = 1;
+    const pageMissing = withoutCoords.slice((mapMissingPage-1)*PAGE_SIZE, mapMissingPage*PAGE_SIZE);
+
+    missingEl.innerHTML = `<h4>${t('map_missing_title', {n: withoutCoords.length})}</h4>` +
+      pageMissing.map(p=>`
+        <div class="map-missing-row" data-pid="${p.id}">
+          <span class="mm-addr" title="${esc(p.address)}">${esc(p.address)}</span>
+          <span class="mm-status"></span>
+          <button class="btn ghost small" data-geocode="${p.id}">📍 ${t('btn_geocode_short')}</button>
+        </div>
+      `).join('');
+    missingEl.querySelectorAll('[data-geocode]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const pid = parseInt(btn.getAttribute('data-geocode'));
+        const prop = DATA.properties.find(x=>x.id===pid);
+        const row = btn.closest('.map-missing-row');
+        const status = row.querySelector('.mm-status');
+        btn.disabled = true;
+        status.textContent = t('map_searching');
+        try{
+          const coords = await geocodeAddress(prop.address);
+          if(coords){
+            prop.lat = coords.lat; prop.lng = coords.lng;
+            await persist();
+            status.textContent = t('map_found');
+            renderPropertyMap();
+          } else {
+            status.textContent = t('map_not_found');
+            btn.disabled = false;
+          }
+        }catch(e){
+          status.textContent = t('map_not_found');
+          btn.disabled = false;
+        }
+      });
+    });
+
+    renderPaginationBar(document.getElementById('mapMissingPagination'), mapMissingPage, withoutCoords.length, PAGE_SIZE, (n)=>{ mapMissingPage=n; renderPropertyMap(); });
+  }
 }
 
 // ---------- export ----------
@@ -1023,8 +1620,8 @@ function exportJSON(){
 
 function exportExcel(){
   const headers = LANG==='en'
-    ? ['Location','Type','Year','Month','Reading','Cost','Remarks','Company','Branch','Usage','TNB Account No','TNB Tariff','Water Account No','Water Provider','Billing Period']
-    : ['Lokasi','Jenis','Tahun','Bulan','Bacaan','Kos','Catatan','Syarikat','Cawangan','Kegunaan','No Akaun TNB','Tarif TNB','No Akaun Air','Pembekal Air','Tempoh Bil'];
+    ? ['Location','Type','Year','Month','Reading','Cost','Remarks','Company','Branch','Usage','TNB Account No','TNB Tariff','Water Account No','Water Provider','Billing Period','Latitude','Longitude']
+    : ['Lokasi','Jenis','Tahun','Bulan','Bacaan','Kos','Catatan','Syarikat','Cawangan','Kegunaan','No Akaun TNB','Tarif TNB','No Akaun Air','Pembekal Air','Tempoh Bil','Latitud','Longitud'];
 
   const monthIdx = m=>MONTHS.indexOf(m);
   const rows = Object.entries(DATA.records).map(([key, rec])=>{
@@ -1051,6 +1648,8 @@ function exportExcel(){
     r.prop.waterAccount || '',
     r.prop.provider || '',
     r.prop.billingPeriod || '',
+    r.prop.lat ?? '',
+    r.prop.lng ?? '',
   ])];
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -1077,6 +1676,8 @@ const IMPORT_HEADER_MAP = {
   waterAccount: ['noakaunair','wateraccount','wateraccountno'],
   provider: ['pembekalair','provider','waterprovider'],
   billingPeriod: ['tempohbil','billingperiod'],
+  lat: ['lat','latitud','latitude'],
+  lng: ['lng','longitud','longitude','lon','long'],
 };
 
 function normHeader(h){
@@ -1197,6 +1798,8 @@ async function runImport(rows){
         billingPeriod: idx.billingPeriod!==undefined ? String(row[idx.billingPeriod]||'').trim() : '',
         tnbAccount: idx.tnbAccount!==undefined ? String(row[idx.tnbAccount]||'').trim() : '',
         waterAccount: idx.waterAccount!==undefined ? String(row[idx.waterAccount]||'').trim() : '',
+        lat: idx.lat!==undefined ? parseNumberValue(row[idx.lat]) : null,
+        lng: idx.lng!==undefined ? parseNumberValue(row[idx.lng]) : null,
       };
       DATA.properties.push(prop);
       newProps++;
@@ -1212,7 +1815,7 @@ async function runImport(rows){
   if(imported>0){
     await persist();
     populateFilterYears();
-    renderTable();
+    refreshRecordsView();
     document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
   }
 
@@ -1251,16 +1854,78 @@ function showImportResult({total, imported, newProps, errors}){
   backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
 }
 
+// ---------- resit digital ----------
+function showReceipt(key){
+  const [pidStr, type, yearStr, month] = key.split('_');
+  const pid = parseInt(pidStr);
+  const prop = DATA.properties.find(p=>p.id===pid);
+  const rec = DATA.records[key];
+  if(!prop || !rec) return;
+
+  const year = parseInt(yearStr);
+  const unit = type==='elec' ? 'kWh' : 'm³';
+  const accNo = type==='elec' ? prop.tnbAccount : prop.waterAccount;
+  const providerName = type==='elec' ? 'TENAGA NASIONAL BERHAD' : (prop.provider || 'SYABAS');
+  const icon = type==='elec' ? '⚡' : '💧';
+  const qrText = encodeURIComponent(
+    `${t('label_location')}: ${prop.address}\n${t('label_month')}/${t('label_year')}: ${monthLabel(month)} ${year}\n${t('label_cost')}: ${fmtRM(rec.cost)}\n${t('th_account')}: ${accNo||'-'}`
+  );
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=4&data=${qrText}`;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal-box receipt-box">
+      <div class="modal-head">
+        <h3>🧾 ${t('receipt_title')}</h3>
+        <button class="close-x" id="receiptModalClose">✕</button>
+      </div>
+      <div class="modal-body receipt-body">
+        <div class="receipt-top">
+          <div class="receipt-icon ${type}">${icon}</div>
+          <div class="receipt-provider">${esc(providerName)}</div>
+          <div class="receipt-sub">${type==='elec'?t('opt_elec_plain'):t('opt_water_plain')} · ${t('receipt_title')}</div>
+        </div>
+        <div class="receipt-dashed"></div>
+        <div class="receipt-row"><span class="rk">${t('label_location')}</span><span class="rv">${esc(prop.address)}</span></div>
+        ${prop.company ? `<div class="receipt-row"><span class="rk">${t('label_company')}</span><span class="rv">${esc(prop.company)}</span></div>` : ''}
+        <div class="receipt-row"><span class="rk">${t('th_account')}</span><span class="rv">${esc(accNo || '—')}</span></div>
+        <div class="receipt-row"><span class="rk">${t('label_month')} / ${t('label_year')}</span><span class="rv">${monthLabel(month)} ${year}</span></div>
+        <div class="receipt-row"><span class="rk">${t('label_reading_kwh').replace(' (kWh)','').replace(' (m³)','')}</span><span class="rv">${fmtNum(rec.reading)} ${unit}</span></div>
+        <div class="receipt-dashed"></div>
+        <div class="receipt-cost">
+          <div class="rc-label">${t('label_cost')}</div>
+          <div class="rc-val">${fmtRM(rec.cost)}</div>
+        </div>
+        ${rec.remarks ? `<div class="receipt-remarks">"${esc(rec.remarks)}"</div>` : ''}
+        <div class="receipt-dashed"></div>
+        <div class="receipt-qr"><img src="${qrUrl}" alt="QR" /></div>
+        <div class="receipt-footer-note">${t('receipt_footer_note')}</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" id="receiptPrintBtn">🖨️ ${t('btn_print')}</button>
+        <button class="btn primary" id="receiptOkBtn">${t('btn_ok')}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  const close = ()=> backdrop.remove();
+  document.getElementById('receiptModalClose').addEventListener('click', close);
+  document.getElementById('receiptOkBtn').addEventListener('click', close);
+  document.getElementById('receiptPrintBtn').addEventListener('click', ()=> window.print());
+  backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) close(); });
+}
+
 function downloadTemplate(){
   const headers = LANG==='en'
-    ? ['Location','Type','Year','Month','Reading','Cost','Remarks','Company','Branch','Usage','TNB Account No','TNB Tariff','Water Account No','Water Provider','Billing Period']
-    : ['Lokasi','Jenis','Tahun','Bulan','Bacaan','Kos','Catatan','Syarikat','Cawangan','Kegunaan','No Akaun TNB','Tarif TNB','No Akaun Air','Pembekal Air','Tempoh Bil'];
+    ? ['Location','Type','Year','Month','Reading','Cost','Remarks','Company','Branch','Usage','TNB Account No','TNB Tariff','Water Account No','Water Provider','Billing Period','Latitude','Longitude']
+    : ['Lokasi','Jenis','Tahun','Bulan','Bacaan','Kos','Catatan','Syarikat','Cawangan','Kegunaan','No Akaun TNB','Tarif TNB','No Akaun Air','Pembekal Air','Tempoh Bil','Latitud','Longitud'];
   const sample = LANG==='en' ? [
-    ['Lot 1355, Jln Tg. Shawal Bt. 2, Kg. Sg. Pinang, 41400 Klang, Selangor','Electric',2026,'July',600,320.5,'','Khidmat Rentang Sdn Bhd','HDD','HDD Store','220023585206','B : Commercial','3941587568','SYABAS','4th - 3rd'],
-    ['New Sample Location Address, Klang, Selangor','Water',2026,'July',45,150.2,'','','','','','','','',''],
+    ['Lot 1355, Jln Tg. Shawal Bt. 2, Kg. Sg. Pinang, 41400 Klang, Selangor','Electric',2026,'July',600,320.5,'','Khidmat Rentang Sdn Bhd','HDD','HDD Store','220023585206','B : Commercial','3941587568','SYABAS','4th - 3rd',3.0245,101.4508],
+    ['New Sample Location Address, Klang, Selangor','Water',2026,'July',45,150.2,'','','','','','','','','','',''],
   ] : [
-    ['Lot 1355, Jln Tg. Shawal Bt. 2, Kg. Sg. Pinang, 41400 Klang, Selangor','Elektrik',2026,'Julai',600,320.5,'','Khidmat Rentang Sdn Bhd','HDD','HDD Store','220023585206','B : Perdagangan','3941587568','SYABAS','4th - 3rd'],
-    ['Alamat Lokasi Baru Contoh, Klang, Selangor','Air',2026,'Julai',45,150.2,'','','','','','','','',''],
+    ['Lot 1355, Jln Tg. Shawal Bt. 2, Kg. Sg. Pinang, 41400 Klang, Selangor','Elektrik',2026,'Julai',600,320.5,'','Khidmat Rentang Sdn Bhd','HDD','HDD Store','220023585206','B : Perdagangan','3941587568','SYABAS','4th - 3rd',3.0245,101.4508],
+    ['Alamat Lokasi Baru Contoh, Klang, Selangor','Air',2026,'Julai',45,150.2,'','','','','','','','','','',''],
   ];
   const ws = XLSX.utils.aoa_to_sheet([headers, ...sample]);
   ws['!cols'] = headers.map(()=>({wch:22}));
@@ -1538,13 +2203,34 @@ async function init(){
   populateFilterTypeOptions();
   populateFilterYears();
   populateFilterMonthOptions();
-  renderTable();
+  refreshRecordsView();
   document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
 
   document.getElementById('themeBtn').addEventListener('click', ()=>{ setTheme(THEME==='dark' ? 'light' : 'dark'); });
   document.getElementById('langBtn').addEventListener('click', ()=>{ setLang(LANG==='ms' ? 'en' : 'ms'); });
   document.getElementById('recordForm').addEventListener('submit', handleSubmit);
   document.getElementById('resetBtn').addEventListener('click', ()=>resetForm(false));
+  document.getElementById('npGeocodeBtn').addEventListener('click', async ()=>{
+    const addr = document.getElementById('propInput').value.trim();
+    if(!addr) return;
+    const btn = document.getElementById('npGeocodeBtn');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = t('map_searching');
+    try{
+      const coords = await geocodeAddress(addr);
+      if(coords){
+        document.getElementById('npLat').value = coords.lat;
+        document.getElementById('npLng').value = coords.lng;
+        btn.textContent = t('map_found');
+      } else {
+        btn.textContent = t('map_not_found');
+      }
+    }catch(e){
+      btn.textContent = t('map_not_found');
+    }
+    setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 2000);
+  });
   document.getElementById('propInput').addEventListener('input', (e)=>{
     onPropInputChange();
     renderPropSuggest(e.target.value);
@@ -1570,10 +2256,14 @@ async function init(){
   document.getElementById('importBtn').addEventListener('click', triggerImport);
   document.getElementById('importFileInput').addEventListener('change', handleImportFile);
   document.getElementById('templateBtn').addEventListener('click', downloadTemplate);
-  document.getElementById('filterSearch').addEventListener('input', renderTable);
-  document.getElementById('filterType').addEventListener('change', renderTable);
-  document.getElementById('filterYear').addEventListener('change', renderTable);
-  document.getElementById('filterMonth').addEventListener('change', renderTable);
+  const resetPagesAndRefresh = ()=>{ tablePage=1; cardsPage=1; heatmapPage=1; mapMissingPage=1; refreshRecordsView(); };
+  document.getElementById('filterSearch').addEventListener('input', resetPagesAndRefresh);
+  document.getElementById('filterType').addEventListener('change', resetPagesAndRefresh);
+  document.getElementById('filterYear').addEventListener('change', resetPagesAndRefresh);
+  document.getElementById('filterMonth').addEventListener('change', resetPagesAndRefresh);
+  document.querySelectorAll('.mode-opt').forEach(b=>{
+    b.addEventListener('click', ()=> setRecordsMode(b.getAttribute('data-mode')));
+  });
 
   document.querySelectorAll('.toggle-opt').forEach(btn=>{
     btn.addEventListener('click', ()=>{
