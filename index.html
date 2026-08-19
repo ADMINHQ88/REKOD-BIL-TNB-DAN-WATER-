@@ -505,7 +505,7 @@ async function supabaseLoadAppData(){
   }));
   const records = {};
   (recs || []).forEach(r => {
-    records[`${r.property_id}_${r.type}_${r.year}_${r.month}`] = { reading: r.reading, cost: r.cost, remarks: r.remarks || '' };
+    records[`${r.property_id}_${r.type}_${r.year}_${r.month}`] = { reading: r.reading, cost: r.cost, remarks: r.remarks || '', updatedAt: r.updated_at_ms ?? null };
   });
   return JSON.stringify({ properties, records });
 }
@@ -527,7 +527,7 @@ async function supabaseSaveAppData(value){
   }
   const recordRows = Object.entries(parsed.records || {}).map(([k, rec]) => {
     const [pid, type, year, month] = k.split('_');
-    return { property_id: parseInt(pid), type, year: parseInt(year), month, reading: rec.reading, cost: rec.cost, remarks: rec.remarks || '' };
+    return { property_id: parseInt(pid), type, year: parseInt(year), month, reading: rec.reading, cost: rec.cost, remarks: rec.remarks || '', updated_at_ms: rec.updatedAt ?? null };
   });
   if (recordRows.length) {
     const { error } = await supabaseClient.from('records').insert(recordRows);
@@ -1035,8 +1035,10 @@ async function handleSubmit(e){
     reading: readingRaw==='' ? null : parseFloat(readingRaw),
     cost: costRaw==='' ? null : parseFloat(costRaw),
     remarks: remarks,
+    updatedAt: Date.now(),
   };
 
+  tablePage = 1;
   await persist();
   populateFilterYears();
   refreshRecordsView();
@@ -1191,7 +1193,7 @@ function renderTable(){
   if(search) rows = rows.filter(r=> (r.prop.address+' '+r.prop.company+' '+(r.prop.tnbAccount||'')+' '+(r.prop.waterAccount||'')).toLowerCase().includes(search));
 
   const monthIdx = m=>MONTHS.indexOf(m);
-  rows.sort((a,b)=> b.year-a.year || monthIdx(b.month)-monthIdx(a.month) || a.prop.address.localeCompare(b.prop.address));
+  rows.sort((a,b)=> (b.rec.updatedAt||0)-(a.rec.updatedAt||0) || b.year-a.year || monthIdx(b.month)-monthIdx(a.month) || a.prop.address.localeCompare(b.prop.address));
 
   const tbody = document.getElementById('recordsBody');
   const emptyNote = document.getElementById('emptyNote');
@@ -1789,11 +1791,12 @@ async function runImport(rows){
     const reading = idx.reading!==undefined ? parseNumberValue(row[idx.reading]) : null;
     const remarks = idx.remarks!==undefined ? String(row[idx.remarks]||'').trim() : '';
     const key = `${prop.id}_${type}_${year}_${month}`;
-    DATA.records[key] = { reading, cost, remarks };
+    DATA.records[key] = { reading, cost, remarks, updatedAt: Date.now() };
     imported++;
   });
 
   if(imported>0){
+    tablePage = 1;
     await persist();
     populateFilterYears();
     refreshRecordsView();
