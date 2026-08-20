@@ -1716,10 +1716,19 @@ function parseNumFromMatch(s){
   return parseFloat(String(s||'').replace(/,/g,''));
 }
 
-// bandingkan No. Akaun secara numerik — abaikan sifar depan & aksara bukan digit,
-// supaya perbezaan format (cth "0464390000" vs "464390000" akibat Excel buang sifar depan) tetap dikira padan
+// bandingkan No. Akaun secara numerik — abaikan sifar depan
 function normalizeAcc(s){
   return String(s||'').replace(/\D/g,'').replace(/^0+/,'');
+}
+
+// sesetengah medan No. Akaun simpan LEBIH DARI SATU nombor bercantum (cth akaun lama/baharu
+// dipisah "/" atau ruang: "2000468917016/0464390000") — pecahkan setiap satu nombor berasingan
+// dan sahkan jika mana-mana satu padan dengan sasaran, bukan cantumkan semua jadi satu digit panjang
+function accountMatches(stored, target){
+  const candidates = String(stored||'').match(/\d+/g) || [];
+  const normTarget = normalizeAcc(target);
+  if(!normTarget) return false;
+  return candidates.some(c => normalizeAcc(c) === normTarget);
 }
 
 function parseTNBBill(text){
@@ -1760,10 +1769,9 @@ function parseWaterBill(text){
 }
 
 function applyParsedBillToForm(parsed, billType){
-  const targetAcc = normalizeAcc(parsed.accountNo);
   const matchProp = DATA.properties.find(p => billType==='elec'
-    ? (p.tnbAccount && normalizeAcc(p.tnbAccount)===targetAcc)
-    : (p.waterAccount && normalizeAcc(p.waterAccount)===targetAcc));
+    ? accountMatches(p.tnbAccount, parsed.accountNo)
+    : accountMatches(p.waterAccount, parsed.accountNo));
 
   resetForm(true);
 
@@ -1813,10 +1821,9 @@ async function handleBillUpload(e){
       return;
     }
     applyParsedBillToForm(parsed, billType);
-    const targetAcc = normalizeAcc(parsed.accountNo);
     const matched = DATA.properties.some(p => billType==='elec'
-      ? (p.tnbAccount && normalizeAcc(p.tnbAccount)===targetAcc)
-      : (p.waterAccount && normalizeAcc(p.waterAccount)===targetAcc));
+      ? accountMatches(p.tnbAccount, parsed.accountNo)
+      : accountMatches(p.waterAccount, parsed.accountNo));
     showBillUploadStatus(matched ? t('bill_extract_success') : t('bill_extract_success_no_match'), 'ok');
   }catch(err){
     showBillUploadStatus(t('bill_extract_failed') + ': ' + err.message, 'err');
