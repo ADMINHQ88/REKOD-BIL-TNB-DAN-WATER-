@@ -1904,6 +1904,102 @@ function triggerImport(){
   document.getElementById('importFileInput').click();
 }
 
+function findHeaderRowIndex(rows){
+  for(let i=0; i<Math.min(rows.length,8); i++){
+    const norm = (rows[i]||[]).map(c=>normHeader(c));
+    if(norm.includes('address') || norm.includes('lokasi')) return i;
+  }
+  return -1;
+}
+
+function detectWideSheetType(headerRow){
+  const joined = headerRow.map(h=>String(h||'')).join(' ').toLowerCase();
+  const isWide = /\b2025\b/.test(joined) && /\b2026\b/.test(joined);
+  if(!isWide) return null;
+  if(joined.includes('kwh')) return 'elec';
+  if(joined.includes('m3') || joined.includes('m³')) return 'water';
+  return null;
+}
+
+// parser khusus untuk "laporan perbandingan" (cth TNB/WATER 2025 vs 2026 dalam sheet berasingan) —
+// header bukan di baris pertama, dan setiap baris ada data DUA tahun serentak dalam lajur berlainan.
+// Ini di-"unpivot"-kan: satu baris boleh hasilkan sehingga 2 rekod (satu bagi setiap tahun).
+function parseWideSheet(rows, headerRowIdx, billType){
+  const headerRow = rows[headerRowIdx];
+  const idx = {};
+  headerRow.forEach((raw,i)=>{ const n = normHeader(raw); if(!(n in idx)) idx[n]=i; });
+  const col = (keys)=>{ for(const k of keys){ if(idx[k]!==undefined) return idx[k]; } return undefined; };
+
+  const addressCol = col(['address','lokasi']);
+  const companyCol = col(['company','syarikat']);
+  const branchCol = col(['branch','cawangan']);
+  const usageCol = col(['usage','kegunaan']);
+  const accountCol = col(['accountno']);
+  const monthCol = col(['month','bulan']);
+  const remarksCol = col(['remarks','catatan']);
+  const tariffCol = col(['tariff','tarif']);
+  const billingPeriodCol = col(['billingperiod','tempohbil']);
+  const providerCol = col(['serviceprovider','pembekalair']);
+
+  let reading2025Col, reading2026Col;
+  if(billType==='elec'){ reading2025Col = col(['kwh2025']); reading2026Col = col(['kwh2026']); }
+  else { reading2025Col = col(['2025usagem3']); reading2026Col = col(['2026usagem3']); }
+  const cost2025Col = col(['2025costrm']);
+  const cost2026Col = col(['2026costrm']);
+
+  const errors = [];
+  let imported = 0, newProps = 0, total = 0;
+
+  if(addressCol===undefined || monthCol===undefined || (cost2025Col===undefined && cost2026Col===undefined)){
+    return { imported:0, newProps:0, total:0, errors:[t('err_missing_columns')] };
+  }
+
+  const dataRows = rows.slice(headerRowIdx+1);
+  dataRows.forEach((row,i)=>{
+    const rowNum = headerRowIdx + 2 + i;
+    const addr = String(row[addressCol]||'').trim();
+    if(!addr) return; // langkau baris kosong senyap-senyap
+    total++;
+    const month = parseMonthValue(row[monthCol]);
+    if(!month){ errors.push(t('err_invalid_month',{row:rowNum, val:row[monthCol]})); return; }
+
+    let prop = findPropertyByAddress(addr);
+    if(!prop){
+      prop = {
+        id: nextPropId(),
+        address: addr,
+        company: companyCol!==undefined ? String(row[companyCol]||'').trim() : '',
+        branch: branchCol!==undefined ? String(row[branchCol]||'').trim() : '',
+        usage: usageCol!==undefined ? String(row[usageCol]||'').trim() : '',
+        tariff: tariffCol!==undefined ? String(row[tariffCol]||'').trim() : '',
+        provider: providerCol!==undefined ? (String(row[providerCol]||'').trim() || 'SYABAS') : (billType==='water' ? 'SYABAS' : ''),
+        billingPeriod: billingPeriodCol!==undefined ? String(row[billingPeriodCol]||'').trim() : '',
+        tnbAccount: billType==='elec' && accountCol!==undefined ? String(row[accountCol]||'').trim() : '',
+        waterAccount: billType==='water' && accountCol!==undefined ? String(row[accountCol]||'').trim() : '',
+        lat: null, lng: null,
+      };
+      DATA.properties.push(prop);
+      newProps++;
+    } else {
+      if(billType==='elec' && !prop.tnbAccount && accountCol!==undefined) prop.tnbAccount = String(row[accountCol]||'').trim();
+      if(billType==='water' && !prop.waterAccount && accountCol!==undefined) prop.waterAccount = String(row[accountCol]||'').trim();
+    }
+
+    const remarks = remarksCol!==undefined ? String(row[remarksCol]||'').trim() : '';
+
+    [[2025, reading2025Col, cost2025Col], [2026, reading2026Col, cost2026Col]].forEach(([year, rCol, cCol])=>{
+      const reading = rCol!==undefined ? parseNumberValue(row[rCol]) : null;
+      const cost = cCol!==undefined ? parseNumberValue(row[cCol]) : null;
+      if(reading===null && cost===null) return; // tiada data utk tahun ni, langkau
+      const key = `${prop.id}_${billType}_${year}_${month}`;
+      DATA.records[key] = { reading, cost, remarks, updatedAt: Date.now() };
+      imported++;
+    });
+  });
+
+  return { imported, newProps, total, errors };
+}
+
 function handleImportFile(e){
   const file = e.target.files[0];
   e.target.value = '';
@@ -1912,6 +2008,39 @@ function handleImportFile(e){
   reader.onload = async (ev)=>{
     try{
       const wb = XLSX.read(ev.target.result, {type:'array'});
+
+      // cuba kesan format "laporan perbandingan" (pelbagai sheet, header bukan baris 1, lajur tahun 2025 vs 2026)
+      const wideResults = [];
+      let anyWide = false;
+      for(const sn of wb.SheetNames){
+        const sheet = wb.Sheets[sn];
+        const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
+        if(!rows.length) continue;
+        const hIdx = findHeaderRowIndex(rows);
+        if(hIdx<0) continue;
+        const billType = detectWideSheetType(rows[hIdx]);
+        if(!billType) continue;
+        anyWide = true;
+        wideResults.push(parseWideSheet(rows, hIdx, billType));
+      }
+
+      if(anyWide){
+        const totalRows = wideResults.reduce((s,r)=>s+r.total,0);
+        const imported = wideResults.reduce((s,r)=>s+r.imported,0);
+        const newProps = wideResults.reduce((s,r)=>s+r.newProps,0);
+        const errors = wideResults.flatMap(r=>r.errors);
+        if(imported>0){
+          tablePage = 1;
+          await persist();
+          populateFilterYears();
+          refreshRecordsView();
+          document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
+        }
+        showImportResult({total: totalRows, imported, newProps, errors});
+        return;
+      }
+
+      // format piawai (satu baris = satu rekod, header di baris pertama)
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
       await runImport(rows);
