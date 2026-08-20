@@ -1716,6 +1716,12 @@ function parseNumFromMatch(s){
   return parseFloat(String(s||'').replace(/,/g,''));
 }
 
+// bandingkan No. Akaun secara numerik — abaikan sifar depan & aksara bukan digit,
+// supaya perbezaan format (cth "0464390000" vs "464390000" akibat Excel buang sifar depan) tetap dikira padan
+function normalizeAcc(s){
+  return String(s||'').replace(/\D/g,'').replace(/^0+/,'');
+}
+
 function parseTNBBill(text){
   // "Ref-1:" paling boleh dipercayai (label JomPay, selalu bersebelahan terus dgn no. akaun);
   // fallback ke label "AKAUN" dengan jarak toleransi kalau susunan lajur PDF tercelaru
@@ -1754,9 +1760,10 @@ function parseWaterBill(text){
 }
 
 function applyParsedBillToForm(parsed, billType){
+  const targetAcc = normalizeAcc(parsed.accountNo);
   const matchProp = DATA.properties.find(p => billType==='elec'
-    ? (p.tnbAccount && p.tnbAccount.replace(/\D/g,'')===parsed.accountNo)
-    : (p.waterAccount && p.waterAccount.replace(/\D/g,'')===parsed.accountNo));
+    ? (p.tnbAccount && normalizeAcc(p.tnbAccount)===targetAcc)
+    : (p.waterAccount && normalizeAcc(p.waterAccount)===targetAcc));
 
   resetForm(true);
 
@@ -1806,9 +1813,10 @@ async function handleBillUpload(e){
       return;
     }
     applyParsedBillToForm(parsed, billType);
+    const targetAcc = normalizeAcc(parsed.accountNo);
     const matched = DATA.properties.some(p => billType==='elec'
-      ? (p.tnbAccount && p.tnbAccount.replace(/\D/g,'')===parsed.accountNo)
-      : (p.waterAccount && p.waterAccount.replace(/\D/g,'')===parsed.accountNo));
+      ? (p.tnbAccount && normalizeAcc(p.tnbAccount)===targetAcc)
+      : (p.waterAccount && normalizeAcc(p.waterAccount)===targetAcc));
     showBillUploadStatus(matched ? t('bill_extract_success') : t('bill_extract_success_no_match'), 'ok');
   }catch(err){
     showBillUploadStatus(t('bill_extract_failed') + ': ' + err.message, 'err');
