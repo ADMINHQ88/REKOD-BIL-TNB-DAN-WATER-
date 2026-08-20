@@ -1696,7 +1696,7 @@ async function extractPdfText(file){
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   let fullText = '';
-  const numPages = Math.min(pdf.numPages, 2);
+  const numPages = Math.min(pdf.numPages, 3);
   for(let i=1; i<=numPages; i++){
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
@@ -1707,7 +1707,7 @@ async function extractPdfText(file){
 
 function detectBillType(text){
   const upper = text.toUpperCase();
-  if(upper.includes('TENAGA NASIONAL')) return 'elec';
+  if(upper.includes('BIL ELEKTRIK') || upper.includes('MYTNB') || upper.includes('TENAGA_NASIONAL') || upper.includes('TNB CARELINE') || upper.includes('CARELINE@MYTNB') || upper.includes('TENAGA NASIONAL')) return 'elec';
   if(upper.includes('AIR SELANGOR') || upper.includes('BIL AIR') || upper.includes('SYABAS')) return 'water';
   return null;
 }
@@ -1717,22 +1717,29 @@ function parseNumFromMatch(s){
 }
 
 function parseTNBBill(text){
-  const accMatch = text.match(/AKAUN\s*[:\s]*([0-9]{9,15})/i);
-  const periodMatch = text.match(/TEMPOH\s*BIL\s*[:\s]*\d{2}[.\/]\d{2}[.\/]\d{4}\s*-\s*(\d{2})[.\/](\d{2})[.\/](\d{4})/i);
+  // "Ref-1:" paling boleh dipercayai (label JomPay, selalu bersebelahan terus dgn no. akaun);
+  // fallback ke label "AKAUN" dengan jarak toleransi kalau susunan lajur PDF tercelaru
+  const refMatch = text.match(/Ref-1\s*:?\s*([0-9]{6,15})/i);
+  const accFallback = text.match(/AKAUN.{0,40}?([0-9]{9,15})\b/i);
+  const accMatch = refMatch || accFallback;
+  // cari terus corak julat tarikh "DD.MM.YYYY - DD.MM.YYYY" (tempoh bil), tanpa bergantung label bersebelahan
+  const periodMatch = text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*-\s*(\d{2})\.(\d{2})\.(\d{4})/);
   const usageMatch = text.match(/Jumlah\s*Penggunaan\s*Anda\s*kWh\s*([\d,]+\.?\d*)/i);
   const costMatch = text.match(/Caj\s*Semasa.{0,20}?RM\s*([\d,]+\.?\d*)/i);
   if(!accMatch || !periodMatch || !usageMatch || !costMatch) return null;
   return {
     accountNo: accMatch[1],
-    month: parseInt(periodMatch[2]),
-    year: parseInt(periodMatch[3]),
+    month: parseInt(periodMatch[5]),
+    year: parseInt(periodMatch[6]),
     usage: parseNumFromMatch(usageMatch[1]),
     cost: parseNumFromMatch(costMatch[1]),
   };
 }
 
 function parseWaterBill(text){
-  const accMatch = text.match(/No\.?\s*Akaun\s*[:\s]*([0-9]{6,15})/i);
+  const refMatch = text.match(/Ref-1\s*:?\s*([0-9]{6,15})/i);
+  const accFallback = text.match(/No\.?\s*Akaun\s*[:\s]*([0-9]{6,15})/i);
+  const accMatch = refMatch || accFallback;
   const dateMatch = text.match(/Tarikh\s*[:\s]*(\d{2})[\/.](\d{2})[\/.](\d{4})/i);
   const usageMatch = text.match(/Jumlah\s*penggunaan\s*yang\s*dibilkan\s*([\d,]+\.?\d*)/i);
   const costMatch = text.match(/Bil\s*Semasa.{0,60}?RM\s*([\d,]+\.?\d*)/i);
