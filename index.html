@@ -974,6 +974,23 @@ function nextPropId(){
   return DATA.properties.length ? Math.max(...DATA.properties.map(p=>p.id))+1 : 0;
 }
 
+// Jana ID lokasi baru dengan SELAMAT. Kalau Supabase aktif, minta pangkalan data
+// sendiri jana ID (INSERT dgn hanya alamat, biar DB tetapkan id automatik) supaya
+// dua pengguna berbeza tak sekali-kali terkira ID sama serentak (punca data
+// tertimpa/hilang bila ramai pengguna guna app serentak). Kalau tiada Supabase
+// (window.storage Claude / localStorage single-user), kekal kira ID di pelayar.
+async function allocatePropertyId(address){
+  if(supabaseClient){
+    const { data, error } = await supabaseClient.from('properties')
+      .insert({ address: address })
+      .select('id')
+      .single();
+    if(error) throw error;
+    return data.id;
+  }
+  return nextPropId();
+}
+
 function findPropertyByAddress(addr){
   return DATA.properties.find(p=>slugMatch(p.address, addr));
 }
@@ -1097,8 +1114,17 @@ async function handleSubmit(e){
   if(!addr){ return; }
   let prop = findPropertyByAddress(addr);
   if(!prop){
+    let newId;
+    try{
+      newId = await allocatePropertyId(addr);
+    }catch(err){
+      const msg = document.getElementById('saveMsg');
+      msg.style.color = 'var(--up)';
+      msg.textContent = t('msg_save_failed', {err: err.message || err});
+      return;
+    }
     prop = {
-      id: nextPropId(),
+      id: newId,
       address: addr,
       company: document.getElementById('npCompany').value.trim(),
       branch: document.getElementById('npBranch').value.trim(),
@@ -1996,7 +2022,7 @@ function detectWideSheetType(headerRow){
 // parser khusus untuk "laporan perbandingan" (cth TNB/WATER 2025 vs 2026 dalam sheet berasingan) —
 // header bukan di baris pertama, dan setiap baris ada data DUA tahun serentak dalam lajur berlainan.
 // Ini di-"unpivot"-kan: satu baris boleh hasilkan sehingga 2 rekod (satu bagi setiap tahun).
-function parseWideSheet(rows, headerRowIdx, billType){
+async function parseWideSheet(rows, headerRowIdx, billType){
   const headerRow = rows[headerRowIdx];
   const idx = {};
   headerRow.forEach((raw,i)=>{ const n = normHeader(raw); if(!(n in idx)) idx[n]=i; });
@@ -2027,18 +2053,26 @@ function parseWideSheet(rows, headerRowIdx, billType){
   }
 
   const dataRows = rows.slice(headerRowIdx+1);
-  dataRows.forEach((row,i)=>{
+  for(let i=0; i<dataRows.length; i++){
+    const row = dataRows[i];
     const rowNum = headerRowIdx + 2 + i;
     const addr = String(row[addressCol]||'').trim();
-    if(!addr) return; // langkau baris kosong senyap-senyap
+    if(!addr) continue; // langkau baris kosong senyap-senyap
     total++;
     const month = parseMonthValue(row[monthCol]);
-    if(!month){ errors.push(t('err_invalid_month',{row:rowNum, val:row[monthCol]})); return; }
+    if(!month){ errors.push(t('err_invalid_month',{row:rowNum, val:row[monthCol]})); continue; }
 
     let prop = findPropertyByAddress(addr);
     if(!prop){
+      let newId;
+      try{
+        newId = await allocatePropertyId(addr);
+      }catch(err){
+        errors.push(t('msg_save_failed', {err: err.message || err}));
+        continue;
+      }
       prop = {
-        id: nextPropId(),
+        id: newId,
         address: addr,
         company: companyCol!==undefined ? String(row[companyCol]||'').trim() : '',
         branch: branchCol!==undefined ? String(row[branchCol]||'').trim() : '',
@@ -2067,7 +2101,7 @@ function parseWideSheet(rows, headerRowIdx, billType){
       DATA.records[key] = { reading, cost, remarks, updatedAt: Date.now() };
       imported++;
     });
-  });
+  }
 
   return { imported, newProps, total, errors };
 }
@@ -2093,7 +2127,7 @@ function handleImportFile(e){
         const billType = detectWideSheetType(rows[hIdx]);
         if(!billType) continue;
         anyWide = true;
-        wideResults.push(parseWideSheet(rows, hIdx, billType));
+        wideResults.push(await parseWideSheet(rows, hIdx, billType));
       }
 
       if(anyWide){
@@ -2146,10 +2180,11 @@ async function runImport(rows){
     return;
   }
 
-  dataRows.forEach((row, i)=>{
+  for(let i=0; i<dataRows.length; i++){
+    const row = dataRows[i];
     const rowNum = i + 2; // account for header row, 1-indexed
     const addr = String(row[idx.address]||'').trim();
-    if(!addr){ return; } // skip blank rows silently
+    if(!addr){ continue; } // skip blank rows silently
 
     const year = parseInt(row[idx.year]);
     const month = parseMonthValue(row[idx.month]);
@@ -2157,14 +2192,21 @@ async function runImport(rows){
     let type = idx.type!==undefined ? parseTypeValue(row[idx.type]) : 'elec';
     if(!type) type = 'elec';
 
-    if(isNaN(year)){ errors.push(t('err_invalid_year',{row:rowNum})); return; }
-    if(!month){ errors.push(t('err_invalid_month',{row:rowNum, val:row[idx.month]})); return; }
-    if(cost===null){ errors.push(t('err_invalid_cost',{row:rowNum})); return; }
+    if(isNaN(year)){ errors.push(t('err_invalid_year',{row:rowNum})); continue; }
+    if(!month){ errors.push(t('err_invalid_month',{row:rowNum, val:row[idx.month]})); continue; }
+    if(cost===null){ errors.push(t('err_invalid_cost',{row:rowNum})); continue; }
 
     let prop = findPropertyByAddress(addr);
     if(!prop){
+      let newId;
+      try{
+        newId = await allocatePropertyId(addr);
+      }catch(err){
+        errors.push(t('msg_save_failed', {err: err.message || err}));
+        continue;
+      }
       prop = {
-        id: nextPropId(),
+        id: newId,
         address: addr,
         company: idx.company!==undefined ? String(row[idx.company]||'').trim() : '',
         branch: idx.branch!==undefined ? String(row[idx.branch]||'').trim() : '',
@@ -2186,7 +2228,7 @@ async function runImport(rows){
     const key = `${prop.id}_${type}_${year}_${month}`;
     DATA.records[key] = { reading, cost, remarks, updatedAt: Date.now() };
     imported++;
-  });
+  }
 
   if(imported>0){
     tablePage = 1;
