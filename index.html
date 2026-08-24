@@ -461,6 +461,7 @@ table.data-table tr:hover td{ background:var(--hover-bg); }
             </select>
             <select id="filterYear"></select>
             <select id="filterMonth"></select>
+            <button type="button" class="btn ghost small" id="clearRecordsFilterBtn" data-i18n="btn_clear_filters">🧹 Kosongkan Filter</button>
           </div>
         </div>
         <div class="table-scroll" id="tableScrollWrap">
@@ -720,6 +721,7 @@ const I18N = {
     tab_dashboard: '📊 Dashboard',
     records_title: '📋 Rekod Tersimpan',
     ph_search_location: '🔍 Cari lokasi atau No. Akaun...',
+    btn_clear_filters: '🧹 Kosongkan Filter',
     opt_all_types: 'Semua Jenis',
     opt_all_years: 'Semua Tahun',
     opt_all_months: 'Semua Bulan',
@@ -837,6 +839,7 @@ const I18N = {
     tab_dashboard: '📊 Dashboard',
     records_title: '📋 Saved Records',
     ph_search_location: '🔍 Search location or Account No...',
+    btn_clear_filters: '🧹 Clear Filters',
     opt_all_types: 'All Types',
     opt_all_years: 'All Years',
     opt_all_months: 'All Months',
@@ -2490,6 +2493,7 @@ function renderDashboard(){
           <label style="font-size:11px;color:var(--muted);margin-right:6px;">${t('label_year')}</label>
           <select class="dash-year-select" id="dashYearSelect">${years.map(y=>`<option value="${y}" ${y===dashYear?'selected':''}>${y}</option>`).join('')}</select>
         </div>
+        <button type="button" class="btn ghost small" id="clearDashFilterBtn">${t('btn_clear_filters')}</button>
       </div>
     </div>
     <div class="dash-cards">
@@ -2519,6 +2523,11 @@ function renderDashboard(){
   document.getElementById('dashYearSelect').addEventListener('change', (e)=>{ dashYear = parseInt(e.target.value); renderDashboard(); });
   document.getElementById('dashBranchSelect').addEventListener('change', (e)=>{ dashBranchFilter = e.target.value; renderDashboard(); });
   document.getElementById('dashTypeSelect').addEventListener('change', (e)=>{ dashTypeFilter = e.target.value; renderDashboard(); });
+  document.getElementById('clearDashFilterBtn').addEventListener('click', ()=>{
+    dashBranchFilter = 'ALL';
+    dashTypeFilter = 'ALL';
+    renderDashboard();
+  });
 
   if(showElec){
     const rankElecEl = document.getElementById('dashRankElec');
@@ -2683,6 +2692,13 @@ async function init(){
   document.getElementById('filterType').addEventListener('change', resetPagesAndRefresh);
   document.getElementById('filterYear').addEventListener('change', resetPagesAndRefresh);
   document.getElementById('filterMonth').addEventListener('change', resetPagesAndRefresh);
+  document.getElementById('clearRecordsFilterBtn').addEventListener('click', ()=>{
+    document.getElementById('filterSearch').value = '';
+    document.getElementById('filterType').value = 'ALL';
+    document.getElementById('filterYear').value = 'ALL';
+    document.getElementById('filterMonth').value = 'ALL';
+    resetPagesAndRefresh();
+  });
   document.querySelectorAll('.mode-opt').forEach(b=>{
     b.addEventListener('click', ()=> setRecordsMode(b.getAttribute('data-mode')));
   });
