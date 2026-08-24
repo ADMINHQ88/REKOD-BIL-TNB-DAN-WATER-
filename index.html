@@ -461,6 +461,7 @@ table.data-table tr:hover td{ background:var(--hover-bg); }
             </select>
             <select id="filterYear"></select>
             <select id="filterMonth"></select>
+            <select id="filterBranch"></select>
             <button type="button" class="btn ghost small" id="clearRecordsFilterBtn" data-i18n="btn_clear_filters">🧹 Kosongkan Filter</button>
           </div>
         </div>
@@ -813,9 +814,9 @@ const I18N = {
     label_billing_period: '📅 Billing Period',
     ph_billing_period: 'e.g: 1st - 31st',
     label_utility_type: '⚡💧 Utility Type',
-    opt_elec: '⚡ Electric',
+    opt_elec: '⚡ Electricity',
     opt_water: '💧 Water',
-    opt_elec_plain: 'Electric',
+    opt_elec_plain: 'Electricity',
     opt_water_plain: 'Water',
     label_year: '🗓️ Year',
     label_month: '📅 Month',
@@ -939,6 +940,7 @@ async function setLang(lang){
   populateMonthSelect();
   populateFilterYears();
   populateFilterMonthOptions();
+  populateFilterBranchOptions();
   populateFilterTypeOptions();
   updateReadingLabel();
   if(editingKey===null) resetForm(true);
@@ -1185,6 +1187,7 @@ async function handleSubmit(e){
     return;
   }
   populateFilterYears();
+  populateFilterBranchOptions();
   refreshRecordsView();
 
   const msg = document.getElementById('saveMsg');
@@ -1278,6 +1281,14 @@ function populateFilterMonthOptions(){
   sel.value = cur || 'ALL';
 }
 
+function populateFilterBranchOptions(){
+  const sel = document.getElementById('filterBranch');
+  const cur = sel.value;
+  const branches = Array.from(new Set(DATA.properties.map(p=>p.branch).filter(Boolean))).sort();
+  sel.innerHTML = `<option value="ALL">${t('opt_all_branches')}</option>` + branches.map(b=>`<option value="${esc(b)}">${esc(b)}</option>`).join('');
+  sel.value = branches.includes(cur) ? cur : 'ALL';
+}
+
 let tablePage = 1;
 let cardsPage = 1;
 let heatmapPage = 1;
@@ -1330,6 +1341,7 @@ function renderTable(){
   const typeFilter = document.getElementById('filterType').value;
   const yearFilter = document.getElementById('filterYear').value;
   const monthFilter = document.getElementById('filterMonth').value;
+  const branchFilter = document.getElementById('filterBranch').value;
 
   let rows = Object.entries(DATA.records).map(([key, rec])=>{
     const [pidStr, type, yearStr, month] = key.split('_');
@@ -1341,6 +1353,7 @@ function renderTable(){
   if(typeFilter!=='ALL') rows = rows.filter(r=>r.type===typeFilter);
   if(yearFilter!=='ALL') rows = rows.filter(r=>String(r.year)===yearFilter);
   if(monthFilter!=='ALL') rows = rows.filter(r=>r.month===monthFilter);
+  if(branchFilter!=='ALL') rows = rows.filter(r=>r.prop.branch===branchFilter);
   if(search) rows = rows.filter(r=> (r.prop.address+' '+r.prop.company+' '+(r.prop.tnbAccount||'')+' '+(r.prop.waterAccount||'')).toLowerCase().includes(search));
 
   const monthIdx = m=>MONTHS.indexOf(m);
@@ -1464,13 +1477,16 @@ function sparklineSVG(values, color){
 function renderPropertyCards(){
   const search = document.getElementById('filterSearch').value.trim().toLowerCase();
   const typeFilter = document.getElementById('filterType').value;
+  const branchFilter = document.getElementById('filterBranch').value;
   const grid = document.getElementById('propertyCardsGrid');
   const emptyNote = document.getElementById('emptyNote');
   const slots = last6MonthSlots();
 
   let props = DATA.properties.filter(p=>{
     const hay = (p.address+' '+p.company+' '+(p.tnbAccount||'')+' '+(p.waterAccount||'')).toLowerCase();
-    return !search || hay.includes(search);
+    const matchesSearch = !search || hay.includes(search);
+    const matchesBranch = branchFilter==='ALL' || p.branch===branchFilter;
+    return matchesSearch && matchesBranch;
   });
 
   const cards = props.map(p=>{
@@ -1549,6 +1565,7 @@ function renderPropertyHeatmap(){
   const search = document.getElementById('filterSearch').value.trim().toLowerCase();
   const typeFilter = document.getElementById('filterType').value;
   const yearFilter = document.getElementById('filterYear').value;
+  const branchFilter = document.getElementById('filterBranch').value;
   const grid = document.getElementById('propertyHeatmapGrid');
   const emptyNote = document.getElementById('emptyNote');
 
@@ -1557,7 +1574,9 @@ function renderPropertyHeatmap(){
 
   let props = DATA.properties.filter(p=>{
     const hay = (p.address+' '+p.company+' '+(p.tnbAccount||'')+' '+(p.waterAccount||'')).toLowerCase();
-    return !search || hay.includes(search);
+    const matchesSearch = !search || hay.includes(search);
+    const matchesBranch = branchFilter==='ALL' || p.branch===branchFilter;
+    return matchesSearch && matchesBranch;
   });
 
   const entries = props.map(p=>{
@@ -1649,12 +1668,15 @@ function ensureLeafletMap(){
 function renderPropertyMap(){
   const search = document.getElementById('filterSearch').value.trim().toLowerCase();
   const typeFilter = document.getElementById('filterType').value;
+  const branchFilter = document.getElementById('filterBranch').value;
   const map = ensureLeafletMap();
   leafletMarkersLayer.clearLayers();
 
   let props = DATA.properties.filter(p=>{
     const hay = (p.address+' '+p.company+' '+(p.tnbAccount||'')+' '+(p.waterAccount||'')).toLowerCase();
-    return !search || hay.includes(search);
+    const matchesSearch = !search || hay.includes(search);
+    const matchesBranch = branchFilter==='ALL' || p.branch===branchFilter;
+    return matchesSearch && matchesBranch;
   });
 
   const withCoords = props.filter(p=> p.lat!=null && p.lng!=null && !isNaN(p.lat) && !isNaN(p.lng));
@@ -2160,6 +2182,7 @@ function handleImportFile(e){
           try{
             await persist();
             populateFilterYears();
+            populateFilterBranchOptions();
             refreshRecordsView();
             document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
           }catch(err){
@@ -2255,6 +2278,7 @@ async function runImport(rows){
     try{
       await persist();
       populateFilterYears();
+      populateFilterBranchOptions();
       refreshRecordsView();
       document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
     }catch(err){
@@ -2634,6 +2658,7 @@ async function init(){
   populateFilterTypeOptions();
   populateFilterYears();
   populateFilterMonthOptions();
+  populateFilterBranchOptions();
   refreshRecordsView();
   document.getElementById('statusLine').textContent = t('status_line', {n: DATA.properties.length, m: Object.keys(DATA.records).length});
 
@@ -2692,11 +2717,13 @@ async function init(){
   document.getElementById('filterType').addEventListener('change', resetPagesAndRefresh);
   document.getElementById('filterYear').addEventListener('change', resetPagesAndRefresh);
   document.getElementById('filterMonth').addEventListener('change', resetPagesAndRefresh);
+  document.getElementById('filterBranch').addEventListener('change', resetPagesAndRefresh);
   document.getElementById('clearRecordsFilterBtn').addEventListener('click', ()=>{
     document.getElementById('filterSearch').value = '';
     document.getElementById('filterType').value = 'ALL';
     document.getElementById('filterYear').value = 'ALL';
     document.getElementById('filterMonth').value = 'ALL';
+    document.getElementById('filterBranch').value = 'ALL';
     resetPagesAndRefresh();
   });
   document.querySelectorAll('.mode-opt').forEach(b=>{
