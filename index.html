@@ -1889,13 +1889,16 @@ function normalizeAcc(s){
 }
 
 // sesetengah medan No. Akaun simpan LEBIH DARI SATU nombor bercantum (cth akaun lama/baharu
-// dipisah "/" atau ruang: "2000468917016/0464390000") — pecahkan setiap satu nombor berasingan
-// dan sahkan jika mana-mana satu padan dengan sasaran, bukan cantumkan semua jadi satu digit panjang
+// dipisah "/" atau ruang: "2000468917016/0464390000") — pecahkan KEDUA-DUA belah (tersimpan
+// & sasaran) kepada nombor berasingan, dan sahkan jika ada MANA-MANA satu bertindih antara
+// dua set tu. PENTING: jangan cantumkan sasaran jadi satu blok digit panjang (bug lama) —
+// itu buat sasaran yang sendiri berformat gabungan (cth "A/B") tak pernah padan dgn simpanan
+// yang sama sebab "A"+"B" dicantum jadi nombor lain sama sekali.
 function accountMatches(stored, target){
-  const candidates = String(stored||'').match(/\d+/g) || [];
-  const normTarget = normalizeAcc(target);
-  if(!normTarget) return false;
-  return candidates.some(c => normalizeAcc(c) === normTarget);
+  const storedCandidates = (String(stored||'').match(/\d+/g) || []).map(normalizeAcc).filter(Boolean);
+  const targetCandidates = (String(target||'').match(/\d+/g) || []).map(normalizeAcc).filter(Boolean);
+  if(storedCandidates.length===0 || targetCandidates.length===0) return false;
+  return storedCandidates.some(sc => targetCandidates.includes(sc));
 }
 
 function parseTNBBill(text){
