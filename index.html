@@ -782,6 +782,7 @@ const I18N = {
     err_invalid_year: 'Baris {row}: tahun tidak sah.',
     err_invalid_month: 'Baris {row}: bulan "{val}" tidak dikenali.',
     err_invalid_cost: 'Baris {row}: kos tidak sah atau kosong.',
+    warn_duplicate_address_account: 'ℹ Baris {row}: alamat "{addr}" dah wujud dgn akaun lain — dicipta sebagai lokasi berasingan (No. Akaun: {account}) supaya data tak bertindih.',
     lang_toggle: 'EN',
   },
   en: {
@@ -900,6 +901,7 @@ const I18N = {
     err_invalid_year: 'Row {row}: invalid year.',
     err_invalid_month: 'Row {row}: month "{val}" not recognized.',
     err_invalid_cost: 'Row {row}: invalid or empty cost.',
+    warn_duplicate_address_account: 'ℹ Row {row}: address "{addr}" already exists under a different account — created as a separate location (Account No.: {account}) to avoid data overlap.',
     lang_toggle: 'BM',
   },
 };
@@ -1015,6 +1017,31 @@ async function allocatePropertyId(address){
 
 function findPropertyByAddress(addr){
   return DATA.properties.find(p=>slugMatch(p.address, addr));
+}
+
+// Cari property ikut ALAMAT — tapi kalau ada No. Akaun diberi dan alamat tu
+// dikongsi oleh LEBIH DARI SATU akaun berlainan (cth bangunan sama, meter/akaun
+// berlainan), padankan ikut akaun juga supaya tak tertimpa data akaun lain yang
+// kebetulan kongsi teks alamat sama persis. Turut kesan property yang SUDAH
+// dipisahkan sebelum ni (alamat dengan sufiks "(No. Akaun)") supaya bulan
+// seterusnya bagi akaun yang sama terus guna property yang betul, bukan cipta
+// lagi satu setiap bulan.
+function findPropertyByAddressAndAccount(addr, accountNo, accField){
+  const base = addr.trim().toLowerCase();
+  const candidates = DATA.properties.filter(p=>{
+    const pa = p.address.trim().toLowerCase();
+    return pa===base || pa.startsWith(base+' (');
+  });
+  if(candidates.length===0) return null;
+  if(!accountNo) return candidates.find(p=>slugMatch(p.address, addr)) || candidates[0];
+
+  const matched = candidates.find(p => p[accField] && accountMatches(p[accField], accountNo));
+  if(matched) return matched;
+
+  const emptyAccountCandidate = candidates.find(p => !p[accField]);
+  if(emptyAccountCandidate) return emptyAccountCandidate;
+
+  return null; // semua candidate sedia ada dah ada akaun LAIN yang berbeza -> ini lokasi/meter lain
 }
 
 // ---------- form population ----------
@@ -2104,33 +2131,41 @@ async function parseWideSheet(rows, headerRowIdx, billType){
     const month = parseMonthValue(row[monthCol]);
     if(!month){ errors.push(t('err_invalid_month',{row:rowNum, val:row[monthCol]})); continue; }
 
-    let prop = findPropertyByAddress(addr);
+    const accField = billType==='elec' ? 'tnbAccount' : 'waterAccount';
+    const rowAccount = accountCol!==undefined ? String(row[accountCol]||'').trim() : '';
+
+    let prop = findPropertyByAddressAndAccount(addr, rowAccount, accField);
     if(!prop){
+      const addressAlreadyUsed = DATA.properties.some(p=>slugMatch(p.address, addr));
+      const finalAddr = (addressAlreadyUsed && rowAccount) ? `${addr} (${rowAccount})` : addr;
       let newId;
       try{
-        newId = await allocatePropertyId(addr);
+        newId = await allocatePropertyId(finalAddr);
       }catch(err){
         errors.push(t('msg_save_failed', {err: err.message || err}));
         continue;
       }
       prop = {
         id: newId,
-        address: addr,
+        address: finalAddr,
         company: companyCol!==undefined ? String(row[companyCol]||'').trim() : '',
         branch: branchCol!==undefined ? String(row[branchCol]||'').trim() : '',
         usage: usageCol!==undefined ? String(row[usageCol]||'').trim() : '',
         tariff: tariffCol!==undefined ? String(row[tariffCol]||'').trim() : '',
         provider: providerCol!==undefined ? (String(row[providerCol]||'').trim() || 'SYABAS') : (billType==='water' ? 'SYABAS' : ''),
         billingPeriod: billingPeriodCol!==undefined ? String(row[billingPeriodCol]||'').trim() : '',
-        tnbAccount: billType==='elec' && accountCol!==undefined ? String(row[accountCol]||'').trim() : '',
-        waterAccount: billType==='water' && accountCol!==undefined ? String(row[accountCol]||'').trim() : '',
+        tnbAccount: billType==='elec' ? rowAccount : '',
+        waterAccount: billType==='water' ? rowAccount : '',
         lat: null, lng: null,
       };
       DATA.properties.push(prop);
       newProps++;
+      if(addressAlreadyUsed){
+        errors.push(t('warn_duplicate_address_account', {row: rowNum, addr, account: rowAccount || '—'}));
+      }
     } else {
-      if(billType==='elec' && !prop.tnbAccount && accountCol!==undefined) prop.tnbAccount = String(row[accountCol]||'').trim();
-      if(billType==='water' && !prop.waterAccount && accountCol!==undefined) prop.waterAccount = String(row[accountCol]||'').trim();
+      if(billType==='elec' && !prop.tnbAccount && rowAccount) prop.tnbAccount = rowAccount;
+      if(billType==='water' && !prop.waterAccount && rowAccount) prop.waterAccount = rowAccount;
     }
 
     const remarks = remarksCol!==undefined ? String(row[remarksCol]||'').trim() : '';
@@ -2239,18 +2274,25 @@ async function runImport(rows){
     if(!month){ errors.push(t('err_invalid_month',{row:rowNum, val:row[idx.month]})); continue; }
     if(cost===null){ errors.push(t('err_invalid_cost',{row:rowNum})); continue; }
 
-    let prop = findPropertyByAddress(addr);
+    const accField = type==='elec' ? 'tnbAccount' : 'waterAccount';
+    const rowAccountStd = accField==='tnbAccount'
+      ? (idx.tnbAccount!==undefined ? String(row[idx.tnbAccount]||'').trim() : '')
+      : (idx.waterAccount!==undefined ? String(row[idx.waterAccount]||'').trim() : '');
+
+    let prop = findPropertyByAddressAndAccount(addr, rowAccountStd, accField);
     if(!prop){
+      const addressAlreadyUsed = DATA.properties.some(p=>slugMatch(p.address, addr));
+      const finalAddr = (addressAlreadyUsed && rowAccountStd) ? `${addr} (${rowAccountStd})` : addr;
       let newId;
       try{
-        newId = await allocatePropertyId(addr);
+        newId = await allocatePropertyId(finalAddr);
       }catch(err){
         errors.push(t('msg_save_failed', {err: err.message || err}));
         continue;
       }
       prop = {
         id: newId,
-        address: addr,
+        address: finalAddr,
         company: idx.company!==undefined ? String(row[idx.company]||'').trim() : '',
         branch: idx.branch!==undefined ? String(row[idx.branch]||'').trim() : '',
         usage: idx.usage!==undefined ? String(row[idx.usage]||'').trim() : '',
@@ -2264,6 +2306,9 @@ async function runImport(rows){
       };
       DATA.properties.push(prop);
       newProps++;
+      if(addressAlreadyUsed){
+        errors.push(t('warn_duplicate_address_account', {row: rowNum, addr, account: rowAccountStd || '—'}));
+      }
     }
 
     const reading = idx.reading!==undefined ? parseNumberValue(row[idx.reading]) : null;
