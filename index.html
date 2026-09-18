@@ -193,6 +193,14 @@ html,body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--
 .bill-upload-divider{ display:flex; align-items:center; gap:10px; margin-top:14px; font-size:11px; color:var(--muted-2); text-transform:uppercase; letter-spacing:.04em; }
 .bill-upload-divider::before, .bill-upload-divider::after{ content:''; flex:1; height:1px; background:var(--border); }
 
+.occupancy-box{ background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px; }
+.occupancy-box summary{ cursor:pointer; font-size:12px; font-weight:600; color:var(--muted); list-style:none; }
+.occupancy-box summary::-webkit-details-marker{ display:none; }
+.occupancy-box summary::before{ content:'▸ '; }
+.occupancy-box[open] summary::before{ content:'▾ '; }
+.occupancy-box summary:hover{ color:var(--text); }
+.occupancy-note{ font-size:10.5px; color:var(--muted-2); margin:8px 0 10px; line-height:1.5; }
+
 .compare-box{
   background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px;
   font-size:12px; font-family:var(--mono); margin-bottom:12px; color:var(--muted); line-height:1.6;
@@ -427,6 +435,16 @@ table.data-table tr:hover td{ background:var(--hover-bg); }
           <input type="text" id="remarksInput" data-i18n-ph="ph_remarks" placeholder="cth: bacaan anggaran, meter rosak, dll" />
         </div>
 
+        <details class="occupancy-box" id="occupancyBox">
+          <summary data-i18n="occupancy_toggle">🏢 Penyewa/Cawangan bulan ini (kalau berubah)</summary>
+          <div class="occupancy-note" data-i18n="occupancy_note">Biarkan kosong untuk guna maklumat default lokasi. Isi hanya jika penyewa/cawangan berubah bagi bulan ini.</div>
+          <div class="field-grid">
+            <div class="field"><label data-i18n="label_company">Syarikat</label><input id="recCompany" type="text" /></div>
+            <div class="field"><label data-i18n="label_branch">Cawangan</label><input id="recBranch" type="text" /></div>
+            <div class="field"><label data-i18n="label_usage">Kegunaan</label><input id="recUsage" type="text" /></div>
+          </div>
+        </details>
+
         <div class="compare-box" id="compareBox" style="display:none;"></div>
 
         <div class="form-actions">
@@ -549,7 +567,11 @@ async function supabaseLoadAppData(){
   }));
   const records = {};
   (recs || []).forEach(r => {
-    records[`${r.property_id}_${r.type}_${r.year}_${r.month}`] = { reading: r.reading, cost: r.cost, remarks: r.remarks || '', updatedAt: r.updated_at_ms ?? null };
+    records[`${r.property_id}_${r.type}_${r.year}_${r.month}`] = {
+      reading: r.reading, cost: r.cost, remarks: r.remarks || '',
+      company: r.company ?? null, branch: r.branch ?? null, usage: r.usage ?? null,
+      updatedAt: r.updated_at_ms ?? null
+    };
   });
   return JSON.stringify({ properties, records });
 }
@@ -572,7 +594,12 @@ async function supabaseSaveAppData(value){
 
   const recordRows = Object.entries(parsed.records || {}).map(([k, rec]) => {
     const [pid, type, year, month] = k.split('_');
-    return { property_id: parseInt(pid), type, year: parseInt(year), month, reading: rec.reading, cost: rec.cost, remarks: rec.remarks || '', updated_at_ms: rec.updatedAt ?? null };
+    return {
+      property_id: parseInt(pid), type, year: parseInt(year), month,
+      reading: rec.reading, cost: rec.cost, remarks: rec.remarks || '',
+      company: rec.company ?? null, branch: rec.branch ?? null, usage: rec.usage ?? null,
+      updated_at_ms: rec.updatedAt ?? null
+    };
   });
   if (recordRows.length) {
     const { error } = await supabaseClient.from('records').upsert(recordRows, { onConflict: 'property_id,type,year,month' });
@@ -709,6 +736,8 @@ const I18N = {
     ph_cost: 'cth: 456.78',
     label_remarks: '📝 Catatan (pilihan)',
     ph_remarks: 'cth: bacaan anggaran, meter rosak, dll',
+    occupancy_toggle: '🏢 Penyewa/Cawangan bulan ini (kalau berubah)',
+    occupancy_note: 'Biarkan kosong untuk guna maklumat default lokasi. Isi hanya jika penyewa/cawangan berubah bagi bulan ini.',
     btn_save: 'Simpan Rekod',
     btn_update: 'Kemaskini Rekod',
     btn_reset: 'Reset',
@@ -828,6 +857,8 @@ const I18N = {
     ph_cost: 'e.g: 456.78',
     label_remarks: '📝 Remarks (optional)',
     ph_remarks: 'e.g: estimated reading, faulty meter, etc.',
+    occupancy_toggle: '🏢 Tenant/Branch for this month (if changed)',
+    occupancy_note: 'Leave blank to use the location default. Fill in only if the tenant/branch changed for this month.',
     btn_save: 'Save Record',
     btn_update: 'Update Record',
     btn_reset: 'Reset',
@@ -1019,6 +1050,13 @@ function findPropertyByAddress(addr){
   return DATA.properties.find(p=>slugMatch(p.address, addr));
 }
 
+// Dapatkan Syarikat/Cawangan/Kegunaan "berkuat kuasa" untuk satu rekod — utamakan
+// nilai override pada rekod itu sendiri (kalau ada, cth penyewa berubah bulan tu),
+// fallback ke nilai default lokasi kalau rekod tiada override.
+function effectiveCompany(prop, rec){ return (rec && rec.company) ? rec.company : (prop ? prop.company : ''); }
+function effectiveBranch(prop, rec){ return (rec && rec.branch) ? rec.branch : (prop ? prop.branch : ''); }
+function effectiveUsage(prop, rec){ return (rec && rec.usage) ? rec.usage : (prop ? prop.usage : ''); }
+
 // Cari property ikut ALAMAT — tapi kalau ada No. Akaun diberi dan alamat tu
 // dikongsi oleh LEBIH DARI SATU akaun berlainan (cth bangunan sama, meter/akaun
 // berlainan), padankan ikut akaun juga supaya tak tertimpa data akaun lain yang
@@ -1195,12 +1233,18 @@ async function handleSubmit(e){
   const readingRaw = document.getElementById('readingInput').value;
   const costRaw = document.getElementById('costInput').value;
   const remarks = document.getElementById('remarksInput').value.trim();
+  const recCompany = document.getElementById('recCompany').value.trim();
+  const recBranch = document.getElementById('recBranch').value.trim();
+  const recUsage = document.getElementById('recUsage').value.trim();
 
   const key = editingKey || `${prop.id}_${type}_${year}_${month}`;
   DATA.records[key] = {
     reading: readingRaw==='' ? null : parseFloat(readingRaw),
     cost: costRaw==='' ? null : parseFloat(costRaw),
     remarks: remarks,
+    company: recCompany || null,
+    branch: recBranch || null,
+    usage: recUsage || null,
     updatedAt: Date.now(),
   };
 
@@ -1232,6 +1276,7 @@ function resetForm(keepMsg){
   document.getElementById('newPropFields').style.display='none';
   document.getElementById('existingPropInfo').style.display='none';
   document.getElementById('compareBox').style.display='none';
+  document.getElementById('occupancyBox').open = false;
   document.querySelectorAll('.toggle-opt').forEach(b=>b.classList.remove('active'));
   document.querySelector('.toggle-opt[data-val="elec"]').classList.add('active');
   updateReadingLabel();
@@ -1264,6 +1309,11 @@ function editRecord(key){
   document.getElementById('readingInput').value = rec.reading ?? '';
   document.getElementById('costInput').value = rec.cost ?? '';
   document.getElementById('remarksInput').value = rec.remarks ?? '';
+  document.getElementById('recCompany').value = rec.company ?? '';
+  document.getElementById('recBranch').value = rec.branch ?? '';
+  document.getElementById('recUsage').value = rec.usage ?? '';
+  // buka kotak penyewa automatik kalau rekod ni memang ada override
+  document.getElementById('occupancyBox').open = !!(rec.company || rec.branch || rec.usage);
   updateReadingLabel();
   updateCompareBox();
   document.getElementById('saveBtn').textContent = t('btn_update');
@@ -1311,7 +1361,10 @@ function populateFilterMonthOptions(){
 function populateFilterBranchOptions(){
   const sel = document.getElementById('filterBranch');
   const cur = sel.value;
-  const branches = Array.from(new Set(DATA.properties.map(p=>p.branch).filter(Boolean))).sort();
+  // kumpul cawangan dari lokasi DAN dari override peringkat rekod (penyewa berubah)
+  const set = new Set(DATA.properties.map(p=>p.branch).filter(Boolean));
+  Object.values(DATA.records).forEach(rec=>{ if(rec && rec.branch) set.add(rec.branch); });
+  const branches = Array.from(set).sort();
   sel.innerHTML = `<option value="ALL">${t('opt_all_branches')}</option>` + branches.map(b=>`<option value="${esc(b)}">${esc(b)}</option>`).join('');
   sel.value = branches.includes(cur) ? cur : 'ALL';
 }
@@ -1380,8 +1433,8 @@ function renderTable(){
   if(typeFilter!=='ALL') rows = rows.filter(r=>r.type===typeFilter);
   if(yearFilter!=='ALL') rows = rows.filter(r=>String(r.year)===yearFilter);
   if(monthFilter!=='ALL') rows = rows.filter(r=>r.month===monthFilter);
-  if(branchFilter!=='ALL') rows = rows.filter(r=>r.prop.branch===branchFilter);
-  if(search) rows = rows.filter(r=> (r.prop.address+' '+r.prop.company+' '+(r.prop.tnbAccount||'')+' '+(r.prop.waterAccount||'')).toLowerCase().includes(search));
+  if(branchFilter!=='ALL') rows = rows.filter(r=>effectiveBranch(r.prop, r.rec)===branchFilter);
+  if(search) rows = rows.filter(r=> (r.prop.address+' '+effectiveCompany(r.prop, r.rec)+' '+effectiveBranch(r.prop, r.rec)+' '+(r.prop.tnbAccount||'')+' '+(r.prop.waterAccount||'')).toLowerCase().includes(search));
 
   const monthIdx = m=>MONTHS.indexOf(m);
   rows.sort((a,b)=> (b.rec.updatedAt||0)-(a.rec.updatedAt||0) || b.year-a.year || monthIdx(b.month)-monthIdx(a.month) || a.prop.address.localeCompare(b.prop.address));
@@ -1407,12 +1460,15 @@ function renderTable(){
     const cd = prevRec ? pctDelta(prevRec.cost, r.rec.cost) : null;
     const unit = r.type==='elec' ? 'kWh' : 'm³';
     const accNo = r.type==='elec' ? r.prop.tnbAccount : r.prop.waterAccount;
+    const effCompany = effectiveCompany(r.prop, r.rec);
+    const effBranch = effectiveBranch(r.prop, r.rec);
+    const effUsage = effectiveUsage(r.prop, r.rec);
     return `<tr>
       <td class="addr-cell" title="${esc(r.prop.address)}">${esc(r.prop.address)}</td>
       <td><span class="type-pill ${r.type}">${r.type==='elec'?t('opt_elec'):t('opt_water')}</span></td>
-      <td class="company-cell" title="${esc(r.prop.company)}">${esc(r.prop.company || '—')}</td>
-      <td>${esc(r.prop.branch || '—')}</td>
-      <td class="usage-cell" title="${esc(r.prop.usage)}">${esc(r.prop.usage || '—')}</td>
+      <td class="company-cell" title="${esc(effCompany)}">${esc(effCompany || '—')}</td>
+      <td>${esc(effBranch || '—')}</td>
+      <td class="usage-cell" title="${esc(effUsage)}">${esc(effUsage || '—')}</td>
       <td>${esc(accNo || '—')}</td>
       <td>${monthLabel(r.month)}</td>
       <td>${r.year}</td>
@@ -1823,9 +1879,9 @@ function exportExcel(){
     r.rec.reading ?? '',
     r.rec.cost ?? '',
     r.rec.remarks || '',
-    r.prop.company || '',
-    r.prop.branch || '',
-    r.prop.usage || '',
+    effectiveCompany(r.prop, r.rec) || '',
+    effectiveBranch(r.prop, r.rec) || '',
+    effectiveUsage(r.prop, r.rec) || '',
     r.prop.tnbAccount || '',
     r.prop.tariff || '',
     r.prop.waterAccount || '',
@@ -2172,13 +2228,20 @@ async function parseWideSheet(rows, headerRowIdx, billType){
     }
 
     const remarks = remarksCol!==undefined ? String(row[remarksCol]||'').trim() : '';
+    const rowCompany = companyCol!==undefined ? String(row[companyCol]||'').trim() : '';
+    const rowBranch = branchCol!==undefined ? String(row[branchCol]||'').trim() : '';
+    const rowUsage = usageCol!==undefined ? String(row[usageCol]||'').trim() : '';
 
     [[2025, reading2025Col, cost2025Col], [2026, reading2026Col, cost2026Col]].forEach(([year, rCol, cCol])=>{
       const reading = rCol!==undefined ? parseNumberValue(row[rCol]) : null;
       const cost = cCol!==undefined ? parseNumberValue(row[cCol]) : null;
       if(reading===null && cost===null) return; // tiada data utk tahun ni, langkau
       const key = `${prop.id}_${billType}_${year}_${month}`;
-      DATA.records[key] = { reading, cost, remarks, updatedAt: Date.now() };
+      DATA.records[key] = {
+        reading, cost, remarks,
+        company: rowCompany || null, branch: rowBranch || null, usage: rowUsage || null,
+        updatedAt: Date.now()
+      };
       imported++;
     });
   }
@@ -2316,8 +2379,15 @@ async function runImport(rows){
 
     const reading = idx.reading!==undefined ? parseNumberValue(row[idx.reading]) : null;
     const remarks = idx.remarks!==undefined ? String(row[idx.remarks]||'').trim() : '';
+    const rowCompanyStd = idx.company!==undefined ? String(row[idx.company]||'').trim() : '';
+    const rowBranchStd = idx.branch!==undefined ? String(row[idx.branch]||'').trim() : '';
+    const rowUsageStd = idx.usage!==undefined ? String(row[idx.usage]||'').trim() : '';
     const key = `${prop.id}_${type}_${year}_${month}`;
-    DATA.records[key] = { reading, cost, remarks, updatedAt: Date.now() };
+    DATA.records[key] = {
+      reading, cost, remarks,
+      company: rowCompanyStd || null, branch: rowBranchStd || null, usage: rowUsageStd || null,
+      updatedAt: Date.now()
+    };
     imported++;
   }
 
@@ -2482,7 +2552,14 @@ function allYearsInData(){
 }
 
 function getDashFilteredProps(){
-  return DATA.properties.filter(p => dashBranchFilter==='ALL' || p.branch===dashBranchFilter);
+  if(dashBranchFilter==='ALL') return DATA.properties;
+  // sertakan lokasi yang cawangannya padan, ATAU yang ada rekod dgn override cawangan tu
+  return DATA.properties.filter(p => {
+    if(p.branch===dashBranchFilter) return true;
+    return Object.entries(DATA.records).some(([k, rec])=>{
+      return k.startsWith(`${p.id}_`) && rec && rec.branch===dashBranchFilter;
+    });
+  });
 }
 
 function renderDashboard(){
@@ -2492,7 +2569,9 @@ function renderDashboard(){
   if(!dashYear || !years.includes(dashYear)) dashYear = years[years.length-1];
   const prevYear = dashYear - 1;
 
-  const allBranches = Array.from(new Set(DATA.properties.map(p=>p.branch).filter(Boolean))).sort();
+  const allBranchSet = new Set(DATA.properties.map(p=>p.branch).filter(Boolean));
+  Object.values(DATA.records).forEach(rec=>{ if(rec && rec.branch) allBranchSet.add(rec.branch); });
+  const allBranches = Array.from(allBranchSet).sort();
   const fProps = getDashFilteredProps();
   const showElec = dashTypeFilter==='ALL' || dashTypeFilter==='elec';
   const showWater = dashTypeFilter==='ALL' || dashTypeFilter==='water';
@@ -2508,7 +2587,13 @@ function renderDashboard(){
   const ed = pctDelta(elecPrev, elecCur);
   const wd = pctDelta(waterPrev, waterCur);
 
-  const branches = Array.from(new Set(fProps.map(p=>p.branch).filter(Boolean))).sort();
+  const branchSet = new Set(fProps.map(p=>p.branch).filter(Boolean));
+  fProps.forEach(p=>{
+    Object.entries(DATA.records).forEach(([k, rec])=>{
+      if(k.startsWith(`${p.id}_`) && rec && rec.branch) branchSet.add(rec.branch);
+    });
+  });
+  const branches = Array.from(branchSet).sort();
 
   const propsWithElecCur = fProps.map(p=>({p, total: lastE>=0 ? propTotal(p,'elec',dashYear,'cost',lastE) : null})).filter(x=>x.total!==null);
   const propsWithWaterCur = fProps.map(p=>({p, total: lastW>=0 ? propTotal(p,'water',dashYear,'cost',lastW) : null})).filter(x=>x.total!==null);
@@ -2642,13 +2727,28 @@ function renderDashboard(){
   });
 
   const branchDatasets = [];
+  // kira jumlah kos ikut cawangan SEBENAR setiap rekod bulanan (bukan cawangan lokasi
+  // sahaja) supaya pertukaran penyewa/cawangan pertengahan tahun dikira dgn betul
+  const branchCostByType = (type, uptoIdx)=>{
+    const totals = {};
+    if(uptoIdx < 0) return branches.map(()=>null);
+    fProps.forEach(p=>{
+      for(let i=0; i<=uptoIdx; i++){
+        const m = MONTHS[i];
+        const rec = DATA.records[`${p.id}_${type}_${dashYear}_${m}`];
+        if(!rec || rec.cost===null || rec.cost===undefined || isNaN(rec.cost)) continue;
+        const b = effectiveBranch(p, rec);
+        if(!b) continue;
+        totals[b] = (totals[b] || 0) + rec.cost;
+      }
+    });
+    return branches.map(b=> (b in totals) ? totals[b] : null);
+  };
   if(showElec){
-    const branchElec = branches.map(b=> sumOrNull(fProps.filter(p=>p.branch===b).map(p=> lastE>=0 ? propTotal(p,'elec',dashYear,'cost',lastE) : null)) );
-    branchDatasets.push({ label:t('opt_elec_plain'), data: branchElec, backgroundColor:'#f0a93b', borderRadius:4, maxBarThickness:26 });
+    branchDatasets.push({ label:t('opt_elec_plain'), data: branchCostByType('elec', lastE), backgroundColor:'#f0a93b', borderRadius:4, maxBarThickness:26 });
   }
   if(showWater){
-    const branchWater = branches.map(b=> sumOrNull(fProps.filter(p=>p.branch===b).map(p=> lastW>=0 ? propTotal(p,'water',dashYear,'cost',lastW) : null)) );
-    branchDatasets.push({ label:t('opt_water_plain'), data: branchWater, backgroundColor:'#3fb6d3', borderRadius:4, maxBarThickness:26 });
+    branchDatasets.push({ label:t('opt_water_plain'), data: branchCostByType('water', lastW), backgroundColor:'#3fb6d3', borderRadius:4, maxBarThickness:26 });
   }
 
   dashCharts.branch = new Chart(document.getElementById('dashChartBranch'), {
