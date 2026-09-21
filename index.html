@@ -2513,35 +2513,40 @@ function destroyDashCharts(){
   dashCharts = {};
 }
 
-function recVal(pid, type, year, month, field){
+function recVal(pid, type, year, month, field, branchFilter){
   const rec = DATA.records[`${pid}_${type}_${year}_${month}`];
-  return rec ? rec[field] : null;
+  if(!rec) return null;
+  if(branchFilter && branchFilter!=='ALL'){
+    const prop = DATA.properties.find(p=>p.id===pid);
+    if(effectiveBranch(prop, rec) !== branchFilter) return null;
+  }
+  return rec[field];
 }
-function sumFieldFor(props, type, year, month, field){
+function sumFieldFor(props, type, year, month, field, branchFilter){
   let s=0, any=false;
   props.forEach(p=>{
-    const v = recVal(p.id, type, year, month, field);
+    const v = recVal(p.id, type, year, month, field, branchFilter);
     if(v!==null && v!==undefined && !isNaN(v)){ s+=v; any=true; }
   });
   return any ? s : null;
 }
-function lastMonthWithDataFor(props, type, year, field){
+function lastMonthWithDataFor(props, type, year, field, branchFilter){
   let idx=-1;
-  MONTHS.forEach((m,i)=>{ if(sumFieldFor(props, type, year, m, field)!==null) idx=i; });
+  MONTHS.forEach((m,i)=>{ if(sumFieldFor(props, type, year, m, field, branchFilter)!==null) idx=i; });
   return idx;
 }
-function sumUpToMonthFor(props, type, year, field, uptoIdx){
+function sumUpToMonthFor(props, type, year, field, uptoIdx, branchFilter){
   let s=0, any=false;
   for(let i=0;i<=uptoIdx;i++){
-    const v = sumFieldFor(props, type, year, MONTHS[i], field);
+    const v = sumFieldFor(props, type, year, MONTHS[i], field, branchFilter);
     if(v!==null){ s+=v; any=true; }
   }
   return any ? s : null;
 }
-function propTotal(prop, type, year, field, uptoIdx){
+function propTotal(prop, type, year, field, uptoIdx, branchFilter){
   let s=0, any=false;
   for(let i=0;i<=uptoIdx;i++){
-    const v = recVal(prop.id, type, year, MONTHS[i], field);
+    const v = recVal(prop.id, type, year, MONTHS[i], field, branchFilter);
     if(v!==null && v!==undefined && !isNaN(v)){ s+=v; any=true; }
   }
   return any ? s : null;
@@ -2576,14 +2581,14 @@ function renderDashboard(){
   const showElec = dashTypeFilter==='ALL' || dashTypeFilter==='elec';
   const showWater = dashTypeFilter==='ALL' || dashTypeFilter==='water';
 
-  const lastE = lastMonthWithDataFor(fProps, 'elec', dashYear, 'cost');
-  const lastW = lastMonthWithDataFor(fProps, 'water', dashYear, 'cost');
-  const elecCur = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', dashYear, 'cost', lastE) : null;
-  const elecPrev = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', prevYear, 'cost', lastE) : null;
-  const waterCur = lastW>=0 ? sumUpToMonthFor(fProps, 'water', dashYear, 'cost', lastW) : null;
-  const waterPrev = lastW>=0 ? sumUpToMonthFor(fProps, 'water', prevYear, 'cost', lastW) : null;
-  const kwhCur = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', dashYear, 'reading', lastE) : null;
-  const m3Cur = lastW>=0 ? sumUpToMonthFor(fProps, 'water', dashYear, 'reading', lastW) : null;
+  const lastE = lastMonthWithDataFor(fProps, 'elec', dashYear, 'cost', dashBranchFilter);
+  const lastW = lastMonthWithDataFor(fProps, 'water', dashYear, 'cost', dashBranchFilter);
+  const elecCur = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', dashYear, 'cost', lastE, dashBranchFilter) : null;
+  const elecPrev = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', prevYear, 'cost', lastE, dashBranchFilter) : null;
+  const waterCur = lastW>=0 ? sumUpToMonthFor(fProps, 'water', dashYear, 'cost', lastW, dashBranchFilter) : null;
+  const waterPrev = lastW>=0 ? sumUpToMonthFor(fProps, 'water', prevYear, 'cost', lastW, dashBranchFilter) : null;
+  const kwhCur = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', dashYear, 'reading', lastE, dashBranchFilter) : null;
+  const m3Cur = lastW>=0 ? sumUpToMonthFor(fProps, 'water', dashYear, 'reading', lastW, dashBranchFilter) : null;
   const ed = pctDelta(elecPrev, elecCur);
   const wd = pctDelta(waterPrev, waterCur);
 
@@ -2595,8 +2600,8 @@ function renderDashboard(){
   });
   const branches = Array.from(branchSet).sort();
 
-  const propsWithElecCur = fProps.map(p=>({p, total: lastE>=0 ? propTotal(p,'elec',dashYear,'cost',lastE) : null})).filter(x=>x.total!==null);
-  const propsWithWaterCur = fProps.map(p=>({p, total: lastW>=0 ? propTotal(p,'water',dashYear,'cost',lastW) : null})).filter(x=>x.total!==null);
+  const propsWithElecCur = fProps.map(p=>({p, total: lastE>=0 ? propTotal(p,'elec',dashYear,'cost',lastE,dashBranchFilter) : null})).filter(x=>x.total!==null);
+  const propsWithWaterCur = fProps.map(p=>({p, total: lastW>=0 ? propTotal(p,'water',dashYear,'cost',lastW,dashBranchFilter) : null})).filter(x=>x.total!==null);
   const topElec = propsWithElecCur.sort((a,b)=>b.total-a.total).slice(0,8);
   const topWater = propsWithWaterCur.sort((a,b)=>b.total-a.total).slice(0,8);
   const maxElec = Math.max(...topElec.map(x=>x.total), 1);
@@ -2704,10 +2709,10 @@ function renderDashboard(){
 
   destroyDashCharts();
 
-  const monthlyElecCur = MONTHS.map(m=>sumFieldFor(fProps, 'elec', dashYear, m, 'cost'));
-  const monthlyElecPrev = MONTHS.map(m=>sumFieldFor(fProps, 'elec', prevYear, m, 'cost'));
-  const monthlyWaterCur = MONTHS.map(m=>sumFieldFor(fProps, 'water', dashYear, m, 'cost'));
-  const monthlyWaterPrev = MONTHS.map(m=>sumFieldFor(fProps, 'water', prevYear, m, 'cost'));
+  const monthlyElecCur = MONTHS.map(m=>sumFieldFor(fProps, 'elec', dashYear, m, 'cost', dashBranchFilter));
+  const monthlyElecPrev = MONTHS.map(m=>sumFieldFor(fProps, 'elec', prevYear, m, 'cost', dashBranchFilter));
+  const monthlyWaterCur = MONTHS.map(m=>sumFieldFor(fProps, 'water', dashYear, m, 'cost', dashBranchFilter));
+  const monthlyWaterPrev = MONTHS.map(m=>sumFieldFor(fProps, 'water', prevYear, m, 'cost', dashBranchFilter));
   const monthLabels = MONTHS.map(m=>monthLabel(m).slice(0,3));
 
   const trendDatasets = [];
