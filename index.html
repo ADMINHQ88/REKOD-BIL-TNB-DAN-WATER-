@@ -2588,9 +2588,13 @@ function renderDashboard(){
   const waterCur = lastW>=0 ? sumUpToMonthFor(fProps, 'water', dashYear, 'cost', lastW, dashBranchFilter) : null;
   const waterPrev = lastW>=0 ? sumUpToMonthFor(fProps, 'water', prevYear, 'cost', lastW, dashBranchFilter) : null;
   const kwhCur = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', dashYear, 'reading', lastE, dashBranchFilter) : null;
+  const kwhPrev = lastE>=0 ? sumUpToMonthFor(fProps, 'elec', prevYear, 'reading', lastE, dashBranchFilter) : null;
   const m3Cur = lastW>=0 ? sumUpToMonthFor(fProps, 'water', dashYear, 'reading', lastW, dashBranchFilter) : null;
+  const m3Prev = lastW>=0 ? sumUpToMonthFor(fProps, 'water', prevYear, 'reading', lastW, dashBranchFilter) : null;
   const ed = pctDelta(elecPrev, elecCur);
   const wd = pctDelta(waterPrev, waterCur);
+  const kwhd = pctDelta(kwhPrev, kwhCur);
+  const m3d = pctDelta(m3Prev, m3Cur);
 
   const branchSet = new Set(fProps.map(p=>p.branch).filter(Boolean));
   fProps.forEach(p=>{
@@ -2610,8 +2614,8 @@ function renderDashboard(){
   const cardsHtml = [
     showElec ? `<div class="dash-card"><div class="lbl">${t('card_elec_cost',{year:dashYear})}</div><div class="val">${fmtRM(elecCur)}</div><div class="delta ${deltaClass(ed)}">${deltaArrow(ed)} ${t('delta_vs',{year:prevYear, val:fmtRM(elecPrev)})}</div></div>` : '',
     showWater ? `<div class="dash-card"><div class="lbl">${t('card_water_cost',{year:dashYear})}</div><div class="val">${fmtRM(waterCur)}</div><div class="delta ${deltaClass(wd)}">${deltaArrow(wd)} ${t('delta_vs',{year:prevYear, val:fmtRM(waterPrev)})}</div></div>` : '',
-    showElec ? `<div class="dash-card"><div class="lbl">${t('card_elec_kwh',{year:dashYear})}</div><div class="val">${fmtNum(kwhCur)} <small>kWh</small></div><div class="delta neu">${t('card_locations',{n:propsWithElecCur.length})}</div></div>` : '',
-    showWater ? `<div class="dash-card"><div class="lbl">${t('card_water_m3',{year:dashYear})}</div><div class="val">${fmtNum(m3Cur)} <small>m³</small></div><div class="delta neu">${t('card_locations',{n:propsWithWaterCur.length})}</div></div>` : '',
+    showElec ? `<div class="dash-card"><div class="lbl">${t('card_elec_kwh',{year:dashYear})}</div><div class="val">${fmtNum(kwhCur)} <small>kWh</small></div><div class="delta ${deltaClass(kwhd)}">${deltaArrow(kwhd)} ${t('delta_vs',{year:prevYear, val:fmtNum(kwhPrev)+' kWh'})}</div></div>` : '',
+    showWater ? `<div class="dash-card"><div class="lbl">${t('card_water_m3',{year:dashYear})}</div><div class="val">${fmtNum(m3Cur)} <small>m³</small></div><div class="delta ${deltaClass(m3d)}">${deltaArrow(m3d)} ${t('delta_vs',{year:prevYear, val:fmtNum(m3Prev)+' m³'})}</div></div>` : '',
   ].join('');
 
   const legendHtml = [
